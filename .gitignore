@@ -1,3 +1,8 @@
+# Outputs
+target/
+output/
+out/
+
 # Compiled class file
 *.class
 
