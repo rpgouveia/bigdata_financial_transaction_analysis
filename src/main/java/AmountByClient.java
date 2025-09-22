@@ -15,6 +15,8 @@ import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.log4j.BasicConfigurator;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class AmountByClient {
 
@@ -90,7 +92,12 @@ public class AmountByClient {
                 } catch (NumberFormatException ignored) { }
             }
 
-            con.write(new Text(key.toString()), new DoubleWritable(total));
+            // Arredondamento para 2 casas decimais usando BigDecimal
+            BigDecimal bd = new BigDecimal(total);
+            bd = bd.setScale(2, RoundingMode.HALF_UP);
+            double roundedTotal = bd.doubleValue();
+
+            con.write(new Text(key.toString()), new DoubleWritable(roundedTotal));
         }
     }
 }
