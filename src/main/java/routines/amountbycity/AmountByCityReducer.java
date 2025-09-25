@@ -1,18 +1,22 @@
 package routines.amountbycity;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 /**
  * Reducer class para AmountByCity
- * Agrega os valores transacionados por cidade e emite o resultado final
+ * Agrega os valores transacionados por cidade e emite o resultado final formatado
  */
-public class AmountByCityReducer extends Reducer<Text, LongWritable, Text, LongWritable> {
+public class AmountByCityReducer extends Reducer<Text, LongWritable, Text, Text> {
 
     // Objeto reutilizável para o resultado
-    private LongWritable result = new LongWritable();
+    private Text result = new Text();
+
+    // Formatador para duas casas decimais
+    private DecimalFormat decimalFormat = new DecimalFormat("0.00");
 
     // Contadores para estatísticas
     private long totalCities = 0;
@@ -42,8 +46,12 @@ public class AmountByCityReducer extends Reducer<Text, LongWritable, Text, LongW
             transactionCount++;
         }
 
-        // Emitir o resultado (cidade, total_em_centavos)
-        result.set(cityTotalInCents);
+        // Converter centavos para dólares e formatar com 2 casas decimais
+        double cityTotalInDollars = cityTotalInCents / 100.0;
+        String formattedAmount = decimalFormat.format(cityTotalInDollars);
+
+        // Emitir o resultado (cidade, valor_formatado)
+        result.set(formattedAmount);
         context.write(key, result);
 
         // Atualizar estatísticas globais
@@ -99,8 +107,7 @@ public class AmountByCityReducer extends Reducer<Text, LongWritable, Text, LongW
         }
 
         System.out.println("========================================");
-        System.out.println("NOTA: Os valores no arquivo de saída estão em centavos.");
-        System.out.println("      Para converter para reais, divida por 100.");
+        System.out.println("NOTA: Os valores no arquivo de saída estão formatados em dólares com 2 casas decimais.");
         System.out.println("========================================");
 
         super.cleanup(context);

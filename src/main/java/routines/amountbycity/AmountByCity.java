@@ -71,10 +71,10 @@ public class AmountByCity extends Configured implements Tool {
         // Configuração do Reducer
         job.setReducerClass(AmountByCityReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(LongWritable.class);
+        job.setOutputValueClass(Text.class);
 
-        // Configuração do Combiner (neste caso usar o mesmo reducer)
-        job.setCombinerClass(AmountByCityReducer.class);
+        // Configuração do Combiner (usar classe específica para combiner)
+        job.setCombinerClass(AmountByCityCombiner.class);
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
@@ -119,8 +119,12 @@ public class AmountByCity extends Configured implements Tool {
      * Método main - ponto de entrada da aplicação
      */
     public static void main(String[] args) throws Exception {
+        // Configuração inicial
+        System.setProperty("hadoop.home.dir", System.getenv("HADOOP_HOME"));
+
         // Log de debug
         System.out.println("Iniciando AmountByCity...");
+        System.out.println("HADOOP_HOME: " + System.getenv("HADOOP_HOME"));
         System.out.println("Processando transações financeiras por cidade");
 
         // Executar com ToolRunner
