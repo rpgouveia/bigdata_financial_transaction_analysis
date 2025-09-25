@@ -119,12 +119,8 @@ public class AmountByCity extends Configured implements Tool {
      * Método main - ponto de entrada da aplicação
      */
     public static void main(String[] args) throws Exception {
-        // Configuração inicial
-        System.setProperty("hadoop.home.dir", System.getenv("HADOOP_HOME"));
-
         // Log de debug
         System.out.println("Iniciando AmountByCity...");
-        System.out.println("HADOOP_HOME: " + System.getenv("HADOOP_HOME"));
         System.out.println("Processando transações financeiras por cidade");
 
         // Executar com ToolRunner
