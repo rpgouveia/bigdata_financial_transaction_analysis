@@ -14,7 +14,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 // Para executar configure os argumentos da seguinte forma:
-// src/main/resources/transactions_data.csv output/tx_count_by_state 1 local
+// src/main/resources/transactions_data.csv output/transaction_count_by_state 1 local
 
 /**
  * Driver class para TransactionCountByState - Conta transações por estado do comerciante
@@ -52,7 +52,7 @@ public class TransactionCountByState extends Configured implements Tool {
         }
 
         // Criar e configurar o job
-        Job job = Job.getInstance(conf, "tx_count_by_state");
+        Job job = Job.getInstance(conf, "transaction_count_by_state");
 
         // Configuração básica do job
         job.setJarByClass(TransactionCountByState.class);
