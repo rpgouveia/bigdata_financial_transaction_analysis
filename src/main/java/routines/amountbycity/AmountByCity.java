@@ -104,8 +104,7 @@ public class AmountByCity extends Configured implements Tool {
 
                 System.out.println("\nPara ver os resultados:");
                 System.out.println("  cat " + outputDir + "/part-r-00000");
-                System.out.println("  # Para ver os valores em formato monetário:");
-                System.out.println("  # Os valores estão em centavos, divida por 100 para reais");
+                System.out.println("  # Os valores já estão formatados em dólares com 2 casas decimais");
             }
 
             return 0;
