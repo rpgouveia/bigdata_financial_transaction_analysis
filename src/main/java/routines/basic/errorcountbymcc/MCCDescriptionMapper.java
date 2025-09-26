@@ -1,4 +1,4 @@
-package routines.errorcountbymcc;
+package routines.basic.errorcountbymcc;
 
 import java.util.HashMap;
 import java.util.Map;

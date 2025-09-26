@@ -1,4 +1,4 @@
-package routines.amountbycity;
+package routines.basic.amountbycity;
 
 import java.io.IOException;
 import org.apache.hadoop.io.LongWritable;

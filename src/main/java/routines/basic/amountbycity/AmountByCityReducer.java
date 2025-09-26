@@ -1,4 +1,4 @@
-package routines.amountbycity;
+package routines.basic.amountbycity;
 
 import java.io.IOException;
 import java.text.DecimalFormat;

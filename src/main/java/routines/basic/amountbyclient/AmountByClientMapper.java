@@ -1,4 +1,4 @@
-package routines.amountbyclient;
+package routines.basic.amountbyclient;
 
 import java.io.IOException;
 import java.math.BigDecimal;

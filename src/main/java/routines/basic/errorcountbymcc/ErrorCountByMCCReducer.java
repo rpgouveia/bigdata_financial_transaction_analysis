@@ -1,4 +1,4 @@
-package routines.errorcountbymcc;
+package routines.basic.errorcountbymcc;
 
 import java.io.IOException;
 import org.apache.hadoop.io.IntWritable;

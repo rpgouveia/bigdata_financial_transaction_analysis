@@ -1,9 +1,9 @@
-package routines.amountbycity;
+package routines.basic.errorcountbymcc;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -14,19 +14,19 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 // Para executar configure os argumentos da seguinte forma:
-// src/main/resources/transactions_data.csv output/amount_by_city 1 local
+// src/main/resources/transactions_data.csv output/error_count_by_mcc 1 local
 
 /**
- * Driver class para AmountByCity - Soma valores transacionados por cidade
- * Processa dados de transações financeiras em formato CSV
+ * Driver class para ErrorCountByMCC - Conta erros por Merchant Category Code
+ * Processa dados de transações financeiras em formato CSV agrupando erros por MCC
  */
-public class AmountByCity extends Configured implements Tool {
+public class ErrorCountByMCC extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
         // Verificação dos argumentos
         if (args.length < 2) {
-            System.err.println("Usage: AmountByCity <input_path> <output_path> [num_reducers] [local]");
+            System.err.println("Usage: ErrorCountByMCC <input_path> <output_path> [num_reducers] [local]");
             System.err.println("  input_path: caminho do arquivo CSV de transações");
             System.err.println("  output_path: caminho do diretório de saída");
             System.err.println("  num_reducers: número de reducers (opcional, padrão: 1)");
@@ -52,10 +52,10 @@ public class AmountByCity extends Configured implements Tool {
         }
 
         // Criar e configurar o job
-        Job job = Job.getInstance(conf, "amount_by_city");
+        Job job = Job.getInstance(conf, "error_count_by_mcc");
 
         // Configuração básica do job
-        job.setJarByClass(AmountByCity.class);
+        job.setJarByClass(ErrorCountByMCC.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
@@ -64,24 +64,24 @@ public class AmountByCity extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, outputDir);
 
         // Configuração do Mapper
-        job.setMapperClass(AmountByCityMapper.class);
+        job.setMapperClass(ErrorCountByMCCMapper.class);
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(LongWritable.class);
+        job.setMapOutputValueClass(IntWritable.class);
 
         // Configuração do Reducer
-        job.setReducerClass(AmountByCityReducer.class);
+        job.setReducerClass(ErrorCountByMCCReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
 
-        // Configuração do Combiner (usar classe específica para combiner)
-        job.setCombinerClass(AmountByCityCombiner.class);
+        // Configuração do Combiner (usar o mesmo reducer como combiner para otimização)
+        job.setCombinerClass(ErrorCountByMCCReducer.class);
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
 
         // Log de informações
         System.out.println("========================================");
-        System.out.println("AmountByCity Job Configuration:");
+        System.out.println("ErrorCountByMCC Job Configuration:");
         System.out.println("  Mode: " + (localMode ? "Local (Standalone)" : "Cluster"));
         System.out.println("  Input: " + inputPath);
         System.out.println("  Output: " + outputDir);
@@ -104,7 +104,7 @@ public class AmountByCity extends Configured implements Tool {
 
                 System.out.println("\nPara ver os resultados:");
                 System.out.println("  cat " + outputDir + "/part-r-00000");
-                System.out.println("  # Os valores já estão formatados em dólares com 2 casas decimais");
+                System.out.println("  # Contagem de erros por Merchant Category Code (MCC)");
             }
 
             return 0;
@@ -119,13 +119,13 @@ public class AmountByCity extends Configured implements Tool {
      */
     public static void main(String[] args) throws Exception {
         // Log de debug
-        System.out.println("Iniciando AmountByCity...");
-        System.out.println("Processando transações financeiras por cidade");
+        System.out.println("Iniciando ErrorCountByMCC...");
+        System.out.println("Processando contagem de erros por Merchant Category Code");
 
         // Executar com ToolRunner
-        int exitCode = ToolRunner.run(new Configuration(), new AmountByCity(), args);
+        int exitCode = ToolRunner.run(new Configuration(), new ErrorCountByMCC(), args);
 
-        System.out.println("AmountByCity finalizado com código: " + exitCode);
+        System.out.println("ErrorCountByMCC finalizado com código: " + exitCode);
         System.exit(exitCode);
     }
 }

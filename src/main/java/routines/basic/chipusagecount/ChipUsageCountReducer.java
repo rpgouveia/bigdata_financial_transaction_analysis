@@ -1,4 +1,4 @@
-package routines.chipusagecount;
+package routines.basic.chipusagecount;
 
 import java.io.IOException;
 import org.apache.hadoop.io.IntWritable;

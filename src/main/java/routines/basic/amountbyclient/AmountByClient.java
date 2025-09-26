@@ -1,9 +1,9 @@
-package routines.transactioncountbystate;
+package routines.basic.amountbyclient;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -14,19 +14,19 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 // Para executar configure os argumentos da seguinte forma:
-// src/main/resources/transactions_data.csv output/transaction_count_by_state 1 local
+// src/main/resources/transactions_data.csv output/amount_by_client 1 local
 
 /**
- * Driver class para TransactionCountByState - Conta transações por estado do comerciante
- * Processa dados de transações financeiras em formato CSV agrupando por merchant_state
+ * Driver class para AmountByClient - Soma valores transacionados por cliente
+ * Processa dados de transações financeiras em formato CSV agrupando por client_id
  */
-public class TransactionCountByState extends Configured implements Tool {
+public class AmountByClient extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
         // Verificação dos argumentos
         if (args.length < 2) {
-            System.err.println("Usage: TransactionCountByState <input_path> <output_path> [num_reducers] [local]");
+            System.err.println("Usage: AmountByClient <input_path> <output_path> [num_reducers] [local]");
             System.err.println("  input_path: caminho do arquivo CSV de transações");
             System.err.println("  output_path: caminho do diretório de saída");
             System.err.println("  num_reducers: número de reducers (opcional, padrão: 1)");
@@ -52,10 +52,10 @@ public class TransactionCountByState extends Configured implements Tool {
         }
 
         // Criar e configurar o job
-        Job job = Job.getInstance(conf, "transaction_count_by_state");
+        Job job = Job.getInstance(conf, "amount_by_client");
 
         // Configuração básica do job
-        job.setJarByClass(TransactionCountByState.class);
+        job.setJarByClass(AmountByClient.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
@@ -64,24 +64,24 @@ public class TransactionCountByState extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, outputDir);
 
         // Configuração do Mapper
-        job.setMapperClass(TransactionCountByStateMapper.class);
+        job.setMapperClass(AmountByClientMapper.class);
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(IntWritable.class);
+        job.setMapOutputValueClass(LongWritable.class);
 
         // Configuração do Reducer
-        job.setReducerClass(TransactionCountByStateReducer.class);
+        job.setReducerClass(AmountByClientReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(IntWritable.class);
+        job.setOutputValueClass(Text.class);
 
-        // Configuração do Combiner (usar o mesmo reducer como combiner para otimização)
-        job.setCombinerClass(TransactionCountByStateReducer.class);
+        // Configuração do Combiner (usar classe específica para combiner)
+        job.setCombinerClass(AmountByClientCombiner.class);
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
 
         // Log de informações
         System.out.println("========================================");
-        System.out.println("TransactionCountByState Job Configuration:");
+        System.out.println("AmountByClient Job Configuration:");
         System.out.println("  Mode: " + (localMode ? "Local (Standalone)" : "Cluster"));
         System.out.println("  Input: " + inputPath);
         System.out.println("  Output: " + outputDir);
@@ -104,7 +104,7 @@ public class TransactionCountByState extends Configured implements Tool {
 
                 System.out.println("\nPara ver os resultados:");
                 System.out.println("  cat " + outputDir + "/part-r-00000");
-                System.out.println("  # Contagem de transações por estado do comerciante");
+                System.out.println("  # Os valores já estão formatados em dólares com 2 casas decimais");
             }
 
             return 0;
@@ -119,13 +119,13 @@ public class TransactionCountByState extends Configured implements Tool {
      */
     public static void main(String[] args) throws Exception {
         // Log de debug
-        System.out.println("Iniciando TransactionCountByState...");
-        System.out.println("Processando contagem de transações por estado do comerciante");
+        System.out.println("Iniciando AmountByClient...");
+        System.out.println("Processando transações financeiras por cliente");
 
         // Executar com ToolRunner
-        int exitCode = ToolRunner.run(new Configuration(), new TransactionCountByState(), args);
+        int exitCode = ToolRunner.run(new Configuration(), new AmountByClient(), args);
 
-        System.out.println("TransactionCountByState finalizado com código: " + exitCode);
+        System.out.println("AmountByClient finalizado com código: " + exitCode);
         System.exit(exitCode);
     }
 }

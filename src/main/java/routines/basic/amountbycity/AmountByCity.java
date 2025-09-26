@@ -1,4 +1,4 @@
-package routines.amountbyclient;
+package routines.basic.amountbycity;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -14,19 +14,19 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 // Para executar configure os argumentos da seguinte forma:
-// src/main/resources/transactions_data.csv output/amount_by_client 1 local
+// src/main/resources/transactions_data.csv output/amount_by_city 1 local
 
 /**
- * Driver class para AmountByClient - Soma valores transacionados por cliente
- * Processa dados de transações financeiras em formato CSV agrupando por client_id
+ * Driver class para AmountByCity - Soma valores transacionados por cidade
+ * Processa dados de transações financeiras em formato CSV
  */
-public class AmountByClient extends Configured implements Tool {
+public class AmountByCity extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
         // Verificação dos argumentos
         if (args.length < 2) {
-            System.err.println("Usage: AmountByClient <input_path> <output_path> [num_reducers] [local]");
+            System.err.println("Usage: AmountByCity <input_path> <output_path> [num_reducers] [local]");
             System.err.println("  input_path: caminho do arquivo CSV de transações");
             System.err.println("  output_path: caminho do diretório de saída");
             System.err.println("  num_reducers: número de reducers (opcional, padrão: 1)");
@@ -52,10 +52,10 @@ public class AmountByClient extends Configured implements Tool {
         }
 
         // Criar e configurar o job
-        Job job = Job.getInstance(conf, "amount_by_client");
+        Job job = Job.getInstance(conf, "amount_by_city");
 
         // Configuração básica do job
-        job.setJarByClass(AmountByClient.class);
+        job.setJarByClass(AmountByCity.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
@@ -64,24 +64,24 @@ public class AmountByClient extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, outputDir);
 
         // Configuração do Mapper
-        job.setMapperClass(AmountByClientMapper.class);
+        job.setMapperClass(AmountByCityMapper.class);
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(LongWritable.class);
 
         // Configuração do Reducer
-        job.setReducerClass(AmountByClientReducer.class);
+        job.setReducerClass(AmountByCityReducer.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 
         // Configuração do Combiner (usar classe específica para combiner)
-        job.setCombinerClass(AmountByClientCombiner.class);
+        job.setCombinerClass(AmountByCityCombiner.class);
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
 
         // Log de informações
         System.out.println("========================================");
-        System.out.println("AmountByClient Job Configuration:");
+        System.out.println("AmountByCity Job Configuration:");
         System.out.println("  Mode: " + (localMode ? "Local (Standalone)" : "Cluster"));
         System.out.println("  Input: " + inputPath);
         System.out.println("  Output: " + outputDir);
@@ -119,13 +119,13 @@ public class AmountByClient extends Configured implements Tool {
      */
     public static void main(String[] args) throws Exception {
         // Log de debug
-        System.out.println("Iniciando AmountByClient...");
-        System.out.println("Processando transações financeiras por cliente");
+        System.out.println("Iniciando AmountByCity...");
+        System.out.println("Processando transações financeiras por cidade");
 
         // Executar com ToolRunner
-        int exitCode = ToolRunner.run(new Configuration(), new AmountByClient(), args);
+        int exitCode = ToolRunner.run(new Configuration(), new AmountByCity(), args);
 
-        System.out.println("AmountByClient finalizado com código: " + exitCode);
+        System.out.println("AmountByCity finalizado com código: " + exitCode);
         System.exit(exitCode);
     }
 }

@@ -1,4 +1,4 @@
-package routines.errorcountbymcc;
+package routines.basic.errorcountbymcc;
 
 import java.io.IOException;
 import java.util.ArrayList;

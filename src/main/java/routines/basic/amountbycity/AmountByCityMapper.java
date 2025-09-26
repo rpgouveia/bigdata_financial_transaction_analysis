@@ -1,22 +1,23 @@
-package routines.chipusagecount;
+package routines.basic.amountbycity;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
 /**
- * Mapper class para ChipUsageCount
- * Processa cada linha de transação CSV e emite pares (tipo_transacao, 1)
+ * Mapper class para AmountByCity
+ * Processa cada linha de transação CSV e emite pares (cidade, valor_em_centavos)
  */
-public class ChipUsageCountMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+public class AmountByCityMapper extends Mapper<LongWritable, Text, Text, LongWritable> {
 
     // Objetos reutilizáveis para otimização
-    private final static IntWritable one = new IntWritable(1);
     private Text outputKey = new Text();
+    private LongWritable outputValue = new LongWritable();
 
     // Contadores para estatísticas
     private long recordsProcessed = 0;
@@ -43,30 +44,35 @@ public class ChipUsageCountMapper extends Mapper<LongWritable, Text, Text, IntWr
             return;
         }
 
+        // Fazer parsing da linha CSV
+        String[] parts = splitCsv(line);
+
+        // Verificar se tem o número mínimo de campos esperados
+        if (parts.length < 12) {
+            invalidRecords++;
+            context.setStatus("Linha inválida (poucos campos): " + parts.length + " campos");
+            return;
+        }
+
         try {
-            // Fazer parsing da linha CSV usando a função robusta
-            String[] parts = splitCsv(line);
-
-            // Verificar se tem o número mínimo de campos esperados
-            if (parts.length < 12) {
-                invalidRecords++;
-                context.setStatus("Linha inválida (poucos campos): " + parts.length + " campos");
-                return;
-            }
-
             // Extrair dados da transação
             // Estrutura CSV: id(0),date(1),client_id(2),card_id(3),amount(4),use_chip(5),
             //                merchant_id(6),merchant_city(7),merchant_state(8),zip(9),mcc(10),errors(11)
 
-            String useChipRaw = parts[5];
+            String cityRaw = parts[7];
+            String amountRaw = parts[4];
 
-            // Processar tipo de transação
-            String transactionType = processTransactionType(useChipRaw);
+            // Processar cidade
+            String city = processCityName(cityRaw);
 
-            // Se processamento foi bem-sucedido, emitir resultado
-            if (!transactionType.isEmpty()) {
-                outputKey.set(transactionType);
-                context.write(outputKey, one);
+            // Processar valor monetário
+            long amountInCents = parseAmountToCents(amountRaw);
+
+            // Se parsing foi bem-sucedido, emitir resultado
+            if (amountInCents != Long.MIN_VALUE && !city.isEmpty()) {
+                outputKey.set(city);
+                outputValue.set(amountInCents);
+                context.write(outputKey, outputValue);
                 validRecords++;
             } else {
                 invalidRecords++;
@@ -77,90 +83,34 @@ public class ChipUsageCountMapper extends Mapper<LongWritable, Text, Text, IntWr
             context.setStatus("Erro processando linha: " + e.getMessage());
         }
 
-        // Log de progresso a cada 50000 registros
-        if (recordsProcessed % 50000 == 0) {
+        // Log de progresso a cada 10000 registros
+        if (recordsProcessed % 10000 == 0) {
             context.setStatus("Processados " + recordsProcessed + " registros. " +
                     "Válidos: " + validRecords + ", Inválidos: " + invalidRecords);
         }
     }
 
     /**
-     * Processa e classifica o tipo de transação baseado no campo use_chip
+     * Processa e limpa o nome da cidade
      */
-    private String processTransactionType(String useChipRaw) {
-        if (useChipRaw == null || useChipRaw.trim().isEmpty()) {
-            return "Unknown Transaction";
+    private String processCityName(String cityRaw) {
+        if (cityRaw == null || cityRaw.trim().isEmpty()) {
+            return "UNKNOWN";
         }
 
-        String useChip = useChipRaw.trim()
+        String city = cityRaw.trim()
                 .replace("\"", "")  // Remove aspas
                 .toUpperCase();     // Padroniza em maiúsculas
 
-        // Se já está em formato descritivo, manter
-        if (useChip.contains("TRANSACTION")) {
-            return capitalizeWords(useChip);
+        if (city.isEmpty() || city.equals("NULL") || city.equals("N/A")) {
+            return "UNKNOWN";
         }
 
-        // Mapear valores simples para descrições
-        switch (useChip) {
-            case "Y":
-            case "YES":
-            case "TRUE":
-            case "1":
-                return "Chip Transaction";
-
-            case "N":
-            case "NO":
-            case "FALSE":
-            case "0":
-                return "Swipe Transaction";
-
-            case "ONLINE":
-                return "Online Transaction";
-
-            case "CONTACTLESS":
-                return "Contactless Transaction";
-
-            case "NULL":
-            case "N/A":
-            case "":
-                return "Unknown Transaction";
-
-            default:
-                // Se não reconhecido, usar valor original capitalizado
-                return capitalizeWords(useChip + " Transaction");
-        }
-    }
-
-    /**
-     * Capitaliza palavras para formatação consistente
-     */
-    private String capitalizeWords(String input) {
-        if (input == null || input.isEmpty()) {
-            return input;
-        }
-
-        StringBuilder result = new StringBuilder();
-        String[] words = input.toLowerCase().split("\\s+");
-
-        for (int i = 0; i < words.length; i++) {
-            if (i > 0) {
-                result.append(" ");
-            }
-            if (!words[i].isEmpty()) {
-                result.append(Character.toUpperCase(words[i].charAt(0)));
-                if (words[i].length() > 1) {
-                    result.append(words[i].substring(1));
-                }
-            }
-        }
-
-        return result.toString();
+        return city;
     }
 
     /**
      * Split de CSV que respeita aspas e trata campos com vírgulas
-     * Mantém a implementação robusta do código original
      */
     private static String[] splitCsv(String line) {
         List<String> result = new ArrayList<>();
@@ -184,6 +134,44 @@ public class ChipUsageCountMapper extends Mapper<LongWritable, Text, Text, IntWr
         result.add(currentField.toString());
 
         return result.toArray(new String[0]);
+    }
+
+    /**
+     * Converte string de valor monetário para centavos (long)
+     * Formato esperado: $14.57 (formato americano do dataset Kaggle)
+     */
+    private static long parseAmountToCents(String rawAmount) {
+        if (rawAmount == null || rawAmount.trim().isEmpty()) {
+            return Long.MIN_VALUE;
+        }
+
+        try {
+            String cleanAmount = rawAmount.trim()
+                    .replace("\"", "")      // Remove aspas
+                    .replace("$", "")       // Remove símbolo Dólar
+                    .replace(" ", "");      // Remove espaços
+
+            if (cleanAmount.isEmpty()) {
+                return Long.MIN_VALUE;
+            }
+
+            // Formato americano: 1,234.56 (vírgula = separador de milhar, ponto = decimal)
+            // Remove vírgulas que são separadores de milhares
+            cleanAmount = cleanAmount.replace(",", "");
+
+            // Converter para BigDecimal para precisão
+            BigDecimal amount = new BigDecimal(cleanAmount);
+
+            // Converter para centavos (multiplicar por 100)
+            BigDecimal amountInCents = amount.movePointRight(2);
+
+            // Arredondar e converter para long
+            return amountInCents.setScale(0, RoundingMode.HALF_UP).longValueExact();
+
+        } catch (Exception e) {
+            // Em caso de erro de parsing, retornar valor inválido
+            return Long.MIN_VALUE;
+        }
     }
 
     /**

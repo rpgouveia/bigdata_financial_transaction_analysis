@@ -1,4 +1,4 @@
-package routines.errorcountbymcc;
+package routines.basic.chipusagecount;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -14,19 +14,19 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 // Para executar configure os argumentos da seguinte forma:
-// src/main/resources/transactions_data.csv output/error_count_by_mcc 1 local
+// src/main/resources/transactions_data.csv output/chip_usage_count 1 local
 
 /**
- * Driver class para ErrorCountByMCC - Conta erros por Merchant Category Code
- * Processa dados de transações financeiras em formato CSV agrupando erros por MCC
+ * Driver class para ChipUsageCount - Conta tipos de transação (chip vs swipe)
+ * Processa dados de transações financeiras em formato CSV agrupando por uso do chip
  */
-public class ErrorCountByMCC extends Configured implements Tool {
+public class ChipUsageCount extends Configured implements Tool {
 
     @Override
     public int run(String[] args) throws Exception {
         // Verificação dos argumentos
         if (args.length < 2) {
-            System.err.println("Usage: ErrorCountByMCC <input_path> <output_path> [num_reducers] [local]");
+            System.err.println("Usage: ChipUsageCount <input_path> <output_path> [num_reducers] [local]");
             System.err.println("  input_path: caminho do arquivo CSV de transações");
             System.err.println("  output_path: caminho do diretório de saída");
             System.err.println("  num_reducers: número de reducers (opcional, padrão: 1)");
@@ -52,10 +52,10 @@ public class ErrorCountByMCC extends Configured implements Tool {
         }
 
         // Criar e configurar o job
-        Job job = Job.getInstance(conf, "error_count_by_mcc");
+        Job job = Job.getInstance(conf, "chip_usage_count");
 
         // Configuração básica do job
-        job.setJarByClass(ErrorCountByMCC.class);
+        job.setJarByClass(ChipUsageCount.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
@@ -64,24 +64,24 @@ public class ErrorCountByMCC extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job, outputDir);
 
         // Configuração do Mapper
-        job.setMapperClass(ErrorCountByMCCMapper.class);
+        job.setMapperClass(ChipUsageCountMapper.class);
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(IntWritable.class);
 
         // Configuração do Reducer
-        job.setReducerClass(ErrorCountByMCCReducer.class);
+        job.setReducerClass(ChipUsageCountReducer.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
 
         // Configuração do Combiner (usar o mesmo reducer como combiner para otimização)
-        job.setCombinerClass(ErrorCountByMCCReducer.class);
+        job.setCombinerClass(ChipUsageCountReducer.class);
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
 
         // Log de informações
         System.out.println("========================================");
-        System.out.println("ErrorCountByMCC Job Configuration:");
+        System.out.println("ChipUsageCount Job Configuration:");
         System.out.println("  Mode: " + (localMode ? "Local (Standalone)" : "Cluster"));
         System.out.println("  Input: " + inputPath);
         System.out.println("  Output: " + outputDir);
@@ -104,7 +104,7 @@ public class ErrorCountByMCC extends Configured implements Tool {
 
                 System.out.println("\nPara ver os resultados:");
                 System.out.println("  cat " + outputDir + "/part-r-00000");
-                System.out.println("  # Contagem de erros por Merchant Category Code (MCC)");
+                System.out.println("  # Contagem de transações por tipo de uso do chip");
             }
 
             return 0;
@@ -119,13 +119,13 @@ public class ErrorCountByMCC extends Configured implements Tool {
      */
     public static void main(String[] args) throws Exception {
         // Log de debug
-        System.out.println("Iniciando ErrorCountByMCC...");
-        System.out.println("Processando contagem de erros por Merchant Category Code");
+        System.out.println("Iniciando ChipUsageCount...");
+        System.out.println("Processando tipos de transação por uso do chip");
 
         // Executar com ToolRunner
-        int exitCode = ToolRunner.run(new Configuration(), new ErrorCountByMCC(), args);
+        int exitCode = ToolRunner.run(new Configuration(), new ChipUsageCount(), args);
 
-        System.out.println("ErrorCountByMCC finalizado com código: " + exitCode);
+        System.out.println("ChipUsageCount finalizado com código: " + exitCode);
         System.exit(exitCode);
     }
 }
