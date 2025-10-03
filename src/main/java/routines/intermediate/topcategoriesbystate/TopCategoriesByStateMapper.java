@@ -1,12 +1,11 @@
 package routines.intermediate.topcategoriesbystate;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import java.util.*;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
+import routines.intermediate.topcategoriesbycity.MCCCountWritable;
 
 /**
  * Mapper para análise de categorias (MCC) por estado
@@ -55,10 +54,9 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
             String state = processState(stateRaw);
             String mcc = processMCC(mccRaw);
 
-            if (!state.isEmpty() && !mcc.isEmpty() && !mcc.equals("UNKNOWN_MCC")) {
-                routines.intermediate.topcategoriesbycity.MCCCountWritable out =
-                        new routines.intermediate.topcategoriesbycity.MCCCountWritable(mcc, 1);
-
+            // Só processar se for estado dos EUA válido
+            if (state != null && !mcc.isEmpty() && !mcc.equals("UNKNOWN_MCC")) {
+                MCCCountWritable out = new MCCCountWritable(mcc, 1);
                 outputKey.set(state);
                 context.write(outputKey, out);
                 validRecords++;
@@ -78,14 +76,30 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
     }
 
     /**
+     * Valida se é um estado dos EUA válido
+     */
+    private static final Set<String> VALID_US_STATES = new HashSet<>(Arrays.asList(
+            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+            "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+            "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+            "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
+    ));
+
+    /**
      * Normaliza/valida a sigla do estado
      */
     private String processState(String stateRaw) {
-        if (stateRaw == null) return "UNKNOWN";
-        String s = stateRaw.trim().replace("\"", "").toUpperCase();
-        if (s.isEmpty() || s.equals("NULL") || s.equals("N/A")) return "UNKNOWN";
-        // Se vier como "CA", "NY", "TX" etc. já está ok; se vier nome completo, mantém em upper.
-        return s;
+        if (stateRaw == null) return null; // Retorna null para rejeitar
+
+        String state = stateRaw.trim().replace("\"", "").toUpperCase();
+
+        // Validar se é um estado dos EUA válido
+        if (VALID_US_STATES.contains(state)) {
+            return state;
+        }
+
+        return null; // Rejeitar se não for estado dos EUA
     }
 
     /**
