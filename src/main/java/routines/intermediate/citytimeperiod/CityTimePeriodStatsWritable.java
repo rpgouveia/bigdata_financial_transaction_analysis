@@ -3,13 +3,14 @@ package routines.intermediate.citytimeperiod;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
 /**
  * Custom Writable para estatísticas de transações por período do dia
  * Divide transações em: Manhã (0h-11h), Tarde (12h-17h), Noite (18h-23h)
+ * Implementa WritableComparable para permitir comparação e ordenação
  */
-public class CityTimePeriodStatsWritable implements Writable {
+public class CityTimePeriodStatsWritable implements WritableComparable<CityTimePeriodStatsWritable> {
 
     private long morningCount;      // Transações na manhã (00:00 - 11:59)
     private long afternoonCount;    // Transações na tarde (12:00 - 17:59)
@@ -154,24 +155,47 @@ public class CityTimePeriodStatsWritable implements Writable {
     }
 
     /**
-     * ToString para debugging
+     * Método compareTo para ordenação
+     * Compara primeiro por total de transações (decrescente)
+     * Em caso de empate, compara período dominante
      */
     @Override
-    public String toString() {
-        return String.format("TimePeriodStats{morning=%d, afternoon=%d, night=%d, total=%d}",
-                morningCount, afternoonCount, nightCount, getTotalCount());
+    public int compareTo(CityTimePeriodStatsWritable other) {
+        // Comparar por total de transações (ordem decrescente)
+        long thisTotal = this.getTotalCount();
+        long otherTotal = other.getTotalCount();
+
+        if (thisTotal != otherTotal) {
+            return Long.compare(otherTotal, thisTotal);
+        }
+
+        // Se empate no total, comparar pelo período com mais movimento
+        long thisMax = Math.max(morningCount, Math.max(afternoonCount, nightCount));
+        long otherMax = Math.max(other.morningCount, Math.max(other.afternoonCount, other.nightCount));
+
+        return Long.compare(otherMax, thisMax);
     }
 
     /**
-     * Formato para output final
+     * ToString para output legível no arquivo
+     * Usado pelo Hadoop ao escrever resultados
      */
-    public String toOutputString() {
+    @Override
+    public String toString() {
         return String.format("Manhã: %d (%.2f%%) | Tarde: %d (%.2f%%) | Noite: %d (%.2f%%) | Total: %d | Pico: %s",
                 morningCount, getMorningPercentage(),
                 afternoonCount, getAfternoonPercentage(),
                 nightCount, getNightPercentage(),
                 getTotalCount(),
                 getPeakPeriod());
+    }
+
+    /**
+     * Formato para debugging
+     */
+    public String toDebugString() {
+        return String.format("TimePeriodStats{morning=%d, afternoon=%d, night=%d, total=%d}",
+                morningCount, afternoonCount, nightCount, getTotalCount());
     }
 
     /**

@@ -82,7 +82,7 @@ public class CityTimePeriod extends Configured implements Tool {
         // Configuração do Reducer
         job.setReducerClass(CityTimePeriodReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(CityTimePeriodStatsWritable.class);  // Custom Writable
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);

@@ -6,12 +6,12 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 /**
  * Reducer para agregação final de estatísticas temporais por cidade
- * Emite resultados formatados com contagens por período do dia
+ * Emite resultados como CityTimePeriodStatsWritable
  */
-public class CityTimePeriodReducer extends Reducer<Text, CityTimePeriodStatsWritable, Text, Text> {
+public class CityTimePeriodReducer extends Reducer<Text, CityTimePeriodStatsWritable, Text, CityTimePeriodStatsWritable> {
 
     // Objeto reutilizável para resultado
-    private Text result = new Text();
+    private CityTimePeriodStatsWritable result = new CityTimePeriodStatsWritable();
 
     // Estatísticas globais
     private long totalCities = 0;
@@ -55,10 +55,8 @@ public class CityTimePeriodReducer extends Reducer<Text, CityTimePeriodStatsWrit
         CityTimePeriodStatsWritable finalStats = new CityTimePeriodStatsWritable(
                 cityMorning, cityAfternoon, cityNight);
 
-        // Formatar resultado
-        String formattedResult = finalStats.toOutputString();
-        result.set(formattedResult);
-        context.write(key, result);
+        // Emitir objeto diretamente (Custom Writable)
+        context.write(key, finalStats);
 
         // Atualizar estatísticas globais
         totalCities++;
