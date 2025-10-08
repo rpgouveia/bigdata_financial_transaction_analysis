@@ -3,13 +3,14 @@ package routines.intermediate.citystatistics;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
 /**
  * Custom Writable para estatísticas completas de transações por cidade
  * Armazena: contagem, valor total (em centavos) e calcula valor médio
+ * Implementa WritableComparable para permitir comparação e ordenação
  */
-public class CityStatsWritable implements Writable {
+public class CityStatsWritable implements WritableComparable<CityStatsWritable> {
 
     private long transactionCount;      // Número de transações
     private long totalAmountInCents;    // Valor total em centavos (para precisão)
@@ -107,21 +108,38 @@ public class CityStatsWritable implements Writable {
     }
 
     /**
-     * ToString para debugging
+     * Método compareTo para ordenação
+     * Compara primeiro por número de transações (decrescente)
+     * Em caso de empate, compara por valor total (decrescente)
+     */
+    @Override
+    public int compareTo(CityStatsWritable other) {
+        // Comparar por número de transações (ordem decrescente - maior primeiro)
+        if (this.transactionCount != other.transactionCount) {
+            return Long.compare(other.transactionCount, this.transactionCount);
+        }
+
+        // Se empate, comparar por valor total (ordem decrescente)
+        return Long.compare(other.totalAmountInCents, this.totalAmountInCents);
+    }
+
+    /**
+     * ToString para output legível no arquivo
+     * Usado pelo Hadoop ao escrever resultados
      */
     @Override
     public String toString() {
-        return String.format("CityStatsWritable{count=%d, total=$%.2f, avg=$%.2f}",
+        return String.format("Transações: %d | Total: $%.2f | Média: $%.2f",
                 transactionCount,
                 getTotalAmountInDollars(),
                 getAverageAmountInDollars());
     }
 
     /**
-     * Formato para output final
+     * Formato para debugging
      */
-    public String toOutputString() {
-        return String.format("Transações: %d | Total: $%.2f | Média: $%.2f",
+    public String toDebugString() {
+        return String.format("CityStatsWritable{count=%d, total=$%.2f, avg=$%.2f}",
                 transactionCount,
                 getTotalAmountInDollars(),
                 getAverageAmountInDollars());

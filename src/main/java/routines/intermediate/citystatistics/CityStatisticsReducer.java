@@ -6,12 +6,12 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 /**
  * Reducer para agregação final de estatísticas por cidade
- * Emite resultados formatados com contagem, total e média
+ * Emite resultados como CityStatsWritable
  */
-public class CityStatisticsReducer extends Reducer<Text, CityStatsWritable, Text, Text> {
+public class CityStatisticsReducer extends Reducer<Text, CityStatsWritable, Text, CityStatsWritable> {
 
     // Objeto reutilizável para resultado
-    private Text result = new Text();
+    private CityStatsWritable result = new CityStatsWritable();
 
     // Estatísticas globais
     private long totalCities = 0;
@@ -55,10 +55,8 @@ public class CityStatisticsReducer extends Reducer<Text, CityStatsWritable, Text
         // Criar objeto final com estatísticas agregadas
         CityStatsWritable finalStats = new CityStatsWritable(cityTransactionCount, cityTotalAmountInCents);
 
-        // Formatar resultado
-        String formattedResult = finalStats.toOutputString();
-        result.set(formattedResult);
-        context.write(key, result);
+        // Emitir objeto diretamente (Custom Writable)
+        context.write(key, finalStats);
 
         // Atualizar estatísticas globais
         totalCities++;
