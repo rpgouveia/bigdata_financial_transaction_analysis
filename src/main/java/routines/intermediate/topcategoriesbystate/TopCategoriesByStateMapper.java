@@ -9,14 +9,22 @@ import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
 
 /**
  * Mapper para análise de categorias (MCC) por estado
- * Emite pares (Estado, MCCCountWritable) para cada transação
+ * Emite pares (Estado, MCCTransactionCount) para cada transação
+ * Filtra APENAS estados dos EUA
  */
-
 public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text, MCCTransactionCount> {
 
     private Text outputKey = new Text();
 
-    // Contadores para estatísticas
+    // Estados válidos dos EUA
+    private static final Set<String> VALID_US_STATES = new HashSet<>(Arrays.asList(
+            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+            "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+            "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+            "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
+    ));
+
     private long recordsProcessed = 0;
     private long validRecords = 0;
     private long headerSkipped = 0;
@@ -29,24 +37,17 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
         recordsProcessed++;
         String line = value.toString();
 
-        // Ignorar cabeçalho
         if (line.startsWith("id,") || line.startsWith("\"id\"")) {
             headerSkipped++;
             return;
         }
 
         try {
-            // Parse da linha CSV
             String[] parts = splitCsv(line);
-
-            // Verificar campos mínimos
             if (parts.length < 12) {
                 invalidRecords++;
                 return;
             }
-
-            // Estrutura CSV: id(0),date(1),client_id(2),card_id(3),amount(4),use_chip(5),
-            //                merchant_id(6),merchant_city(7),merchant_state(8),zip(9),mcc(10),errors(11)
 
             String stateRaw = parts[8];
             String mccRaw = parts[10];
@@ -76,49 +77,23 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
     }
 
     /**
-     * Valida se é um estado dos EUA válido
-     */
-    private static final Set<String> VALID_US_STATES = new HashSet<>(Arrays.asList(
-            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-            "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-            "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-            "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-            "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
-    ));
-
-    /**
-     * Normaliza/valida a sigla do estado
+     * Valida se é um estado dos EUA
      */
     private String processState(String stateRaw) {
-        if (stateRaw == null) return null; // Retorna null para rejeitar
+        if (stateRaw == null) return null;
+        String s = stateRaw.trim().replace("\"", "").toUpperCase();
 
-        String state = stateRaw.trim().replace("\"", "").toUpperCase();
-
-        // Validar se é um estado dos EUA válido
-        if (VALID_US_STATES.contains(state)) {
-            return state;
-        }
-
-        return null; // Rejeitar se não for estado dos EUA
+        // Retorna o estado apenas se for válido, senão null
+        return VALID_US_STATES.contains(s) ? s : null;
     }
 
-    /**
-     * Processa e valida o código MCC
-     */
     private String processMCC(String mccRaw) {
-        if (mccRaw == null || mccRaw.trim().isEmpty()) {
-            return "UNKNOWN_MCC";
-        }
+        if (mccRaw == null || mccRaw.trim().isEmpty()) return "UNKNOWN_MCC";
         String mcc = mccRaw.trim().replace("\"", "");
-        if (mcc.isEmpty() || mcc.equals("NULL") || mcc.equals("N/A")) {
-            return "UNKNOWN_MCC";
-        }
+        if (mcc.isEmpty() || mcc.equals("NULL") || mcc.equals("N/A")) return "UNKNOWN_MCC";
         return mcc.matches("\\d+") ? mcc : "UNKNOWN_MCC";
     }
 
-    /**
-     * Split de CSV que respeita aspas
-     */
     private static String[] splitCsv(String line) {
         List<String> result = new ArrayList<>();
         StringBuilder currentField = new StringBuilder();
@@ -126,7 +101,6 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
 
         for (int i = 0; i < line.length(); i++) {
             char ch = line.charAt(i);
-
             if (ch == '\"') {
                 inQuotes = !inQuotes;
             } else if (ch == ',' && !inQuotes) {
@@ -136,7 +110,6 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
                 currentField.append(ch);
             }
         }
-
         result.add(currentField.toString());
         return result.toArray(new String[0]);
     }
@@ -144,15 +117,15 @@ public class TopCategoriesByStateMapper extends Mapper<LongWritable, Text, Text,
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
         System.out.println("========================================");
-        System.out.println("Estatísticas do Mapper (por ESTADO):");
+        System.out.println("Estatísticas do Mapper (APENAS ESTADOS DOS EUA):");
         System.out.println("  Total de registros processados: " + recordsProcessed);
         System.out.println("  Cabeçalhos ignorados: " + headerSkipped);
-        System.out.println("  Registros válidos: " + validRecords);
-        System.out.println("  Registros inválidos: " + invalidRecords);
+        System.out.println("  Registros válidos (estados EUA): " + validRecords);
+        System.out.println("  Registros rejeitados (países/inválidos): " + invalidRecords);
 
         if (recordsProcessed > 0) {
             double successRate = (double) validRecords / recordsProcessed * 100;
-            System.out.println("  Taxa de sucesso: " + String.format("%.2f%%", successRate));
+            System.out.println("  Taxa de processamento (EUA): " + String.format("%.2f%%", successRate));
         }
         System.out.println("========================================");
         super.cleanup(context);

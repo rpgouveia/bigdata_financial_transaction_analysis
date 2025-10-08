@@ -2,18 +2,19 @@ package routines.intermediate.topcategoriesbystate;
 
 import java.io.IOException;
 import java.util.*;
-
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
+import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
+import routines.intermediate.topcategoriesbycity.TopCategoriesResult;
 import routines.intermediate.topcategoriesbycity.MCCDescriptionMapper;
 
 /**
  * Reducer para identificar as top 3 categorias (MCC) por Estado
- * Demonstra agregação complexa com ranking.
+ * Demonstra agregação complexa com ranking
  */
-public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermediate.topcategoriesbycity.MCCTransactionCount, Text, Text> {
+public class TopCategoriesByStateReducer extends Reducer<Text, MCCTransactionCount, Text, TopCategoriesResult> {
 
-    private Text result = new Text();
+    private TopCategoriesResult result = new TopCategoriesResult();
 
     // Estatísticas globais
     private long totalStates = 0;
@@ -27,14 +28,14 @@ public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermed
     private int lowestUniqueMCCCount = Integer.MAX_VALUE;
 
     @Override
-    protected void reduce(Text key, Iterable<routines.intermediate.topcategoriesbycity.MCCTransactionCount> values, Context context)
+    protected void reduce(Text key, Iterable<MCCTransactionCount> values, Context context)
             throws IOException, InterruptedException {
 
         String stateName = key.toString();
 
         // Agregar contagens por MCC
         Map<String, Long> mccCounts = new HashMap<>();
-        for (routines.intermediate.topcategoriesbycity.MCCTransactionCount mccCount : values) {
+        for (MCCTransactionCount mccCount : values) {
             String mcc = mccCount.getMccCode();
             long count = mccCount.getCount();
             mccCounts.put(mcc, mccCounts.getOrDefault(mcc, 0L) + count);
@@ -47,21 +48,19 @@ public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermed
         // Top 3
         int topN = Math.min(3, mccList.size());
 
-        // Construir linha de resultado
-        StringBuilder sb = new StringBuilder();
+        // Construir arrays para o TopCategoriesResult
+        String[] topMCCs = new String[topN];
+        long[] topCounts = new long[topN];
+
         for (int i = 0; i < topN; i++) {
             Map.Entry<String, Long> entry = mccList.get(i);
-            String mcc = entry.getKey();
-            long count = entry.getValue();
-
-            String description = MCCDescriptionMapper.getDescription(mcc);
-
-            if (i > 0) sb.append(" | ");
-            sb.append(String.format("Top-%d: %s (%s) %d", i + 1, mcc, description, count));
+            topMCCs[i] = entry.getKey();
+            topCounts[i] = entry.getValue();
         }
 
-        result.set(sb.toString());
-        context.write(key, result);
+        // Criar e emitir TopCategoriesResult
+        TopCategoriesResult topCategories = new TopCategoriesResult(topMCCs, topCounts, topN);
+        context.write(key, topCategories);
 
         // Estatísticas globais
         totalStates++;
