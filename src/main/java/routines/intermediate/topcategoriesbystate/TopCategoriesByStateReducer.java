@@ -9,11 +9,28 @@ import routines.intermediate.topcategoriesbycity.TopCategoriesResult;
 import routines.intermediate.topcategoriesbycity.MCCDescriptionMapper;
 
 /**
- * Reducer para identificar as top 3 categorias (MCC) por Estado
+ * Reducer para identificar as top 3 categorias (MCC) por Estado dos EUA
  * Demonstra agregação complexa com ranking
+ *
+ * Para cada estado:
+ * - Agrega todas as transações por código MCC
+ * - Ordena por contagem (decrescente)
+ * - Seleciona as top 3 categorias mais frequentes
+ * - Emite resultado estruturado como TopCategoriesResult
+ *
+ * Além disso, calcula estatísticas globais:
+ * - Total de estados processados
+ * - Diversidade comercial (estados com mais/menos categorias únicas)
+ * - Média de categorias por estado
+ *
+ * Reutiliza classes do pacote topcategoriesbycity:
+ * - MCCTransactionCount (input)
+ * - TopCategoriesResult (output)
+ * - MCCDescriptionMapper (descrições)
  */
 public class TopCategoriesByStateReducer extends Reducer<Text, MCCTransactionCount, Text, TopCategoriesResult> {
 
+    // Objeto reutilizável para resultado
     private TopCategoriesResult result = new TopCategoriesResult();
 
     // Estatísticas globais
@@ -27,25 +44,35 @@ public class TopCategoriesByStateReducer extends Reducer<Text, MCCTransactionCou
     private String stateWithLeastDiversity = "";
     private int lowestUniqueMCCCount = Integer.MAX_VALUE;
 
+    /**
+     * Método reduce - agrega e ranqueia categorias para cada estado
+     * @param key Sigla do estado (ex: "CA", "NY", "TX")
+     * @param values Lista de MCCTransactionCount para este estado
+     * @param context Contexto para emitir resultado
+     */
     @Override
     protected void reduce(Text key, Iterable<MCCTransactionCount> values, Context context)
             throws IOException, InterruptedException {
 
         String stateName = key.toString();
 
-        // Agregar contagens por MCC
+        // HashMap para agregar contagens por MCC
         Map<String, Long> mccCounts = new HashMap<>();
+
+        // Agregar todas as contagens para este estado
         for (MCCTransactionCount mccCount : values) {
             String mcc = mccCount.getMccCode();
             long count = mccCount.getCount();
             mccCounts.put(mcc, mccCounts.getOrDefault(mcc, 0L) + count);
         }
 
-        // Ordenar por contagem (decrescente)
+        // Converter para lista para sorting
         List<Map.Entry<String, Long>> mccList = new ArrayList<>(mccCounts.entrySet());
+
+        // Ordenar por contagem (decrescente - maior primeiro)
         mccList.sort((a, b) -> b.getValue().compareTo(a.getValue()));
 
-        // Top 3
+        // Pegar top 3 (ou menos se não houver 3 categorias)
         int topN = Math.min(3, mccList.size());
 
         // Construir arrays para o TopCategoriesResult
@@ -62,27 +89,33 @@ public class TopCategoriesByStateReducer extends Reducer<Text, MCCTransactionCou
         TopCategoriesResult topCategories = new TopCategoriesResult(topMCCs, topCounts, topN);
         context.write(key, topCategories);
 
-        // Estatísticas globais
+        // Atualizar estatísticas globais
         totalStates++;
         totalCategories += mccCounts.size();
 
         int uniqueMCCCount = mccCounts.size();
 
+        // Rastrear estado com maior diversidade (mais categorias únicas)
         if (uniqueMCCCount > highestUniqueMCCCount && uniqueMCCCount >= 5) {
             highestUniqueMCCCount = uniqueMCCCount;
             stateWithMostDiversity = stateName;
         }
 
+        // Rastrear estado com menor diversidade (menos categorias únicas)
         if (uniqueMCCCount < lowestUniqueMCCCount && uniqueMCCCount >= 1) {
             lowestUniqueMCCCount = uniqueMCCCount;
             stateWithLeastDiversity = stateName;
         }
 
-        if (totalStates % 100 == 0) {
+        // Log de progresso
+        if (totalStates % 10 == 0) {
             context.setStatus("Processados " + totalStates + " estados");
         }
     }
 
+    /**
+     * Cleanup - emite estatísticas finais do Reducer
+     */
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
         System.out.println("========================================");
@@ -96,13 +129,17 @@ public class TopCategoriesByStateReducer extends Reducer<Text, MCCTransactionCou
             System.out.println();
 
             System.out.println("  Diversidade de Mercado:");
+
             if (!stateWithMostDiversity.isEmpty()) {
                 System.out.println("    Estado com maior diversidade:");
-                System.out.println("      " + stateWithMostDiversity + ": " + highestUniqueMCCCount + " categorias diferentes");
+                System.out.println("      " + stateWithMostDiversity + ": " +
+                        highestUniqueMCCCount + " categorias diferentes");
             }
+
             if (!stateWithLeastDiversity.isEmpty() && lowestUniqueMCCCount != Integer.MAX_VALUE) {
                 System.out.println("    Estado com menor diversidade:");
-                System.out.println("      " + stateWithLeastDiversity + ": " + lowestUniqueMCCCount + " categorias diferentes");
+                System.out.println("      " + stateWithLeastDiversity + ": " +
+                        lowestUniqueMCCCount + " categorias diferentes");
             }
 
             System.out.println();
@@ -119,6 +156,7 @@ public class TopCategoriesByStateReducer extends Reducer<Text, MCCTransactionCou
         System.out.println("========================================");
         System.out.println("NOTA: Resultados mostram as top 3 categorias mais frequentes");
         System.out.println("      em cada ESTADO, baseado em códigos MCC.");
+        System.out.println("      Apenas estados dos EUA são processados.");
         System.out.println("========================================");
 
         super.cleanup(context);
