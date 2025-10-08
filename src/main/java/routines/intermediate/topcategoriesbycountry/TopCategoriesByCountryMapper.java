@@ -5,14 +5,14 @@ import java.util.*;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import routines.intermediate.topcategoriesbycity.MCCCountWritable;
+import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
 
 /**
  * Mapper para análise de categorias (MCC) por país
  * Emite pares (País, MCCCountWritable) para cada transação
  * Filtra APENAS países (rejeita estados dos EUA)
  */
-public class TopCategoriesByCountryMapper extends Mapper<LongWritable, Text, Text, MCCCountWritable> {
+public class TopCategoriesByCountryMapper extends Mapper<LongWritable, Text, Text, MCCTransactionCount> {
 
     private Text outputKey = new Text();
 
@@ -60,7 +60,7 @@ public class TopCategoriesByCountryMapper extends Mapper<LongWritable, Text, Tex
 
             // Só processar se for país válido (NÃO estado dos EUA)
             if (country != null && !mcc.isEmpty() && !mcc.equals("UNKNOWN_MCC")) {
-                MCCCountWritable out = new MCCCountWritable(mcc, 1);
+                MCCTransactionCount out = new MCCTransactionCount(mcc, 1);
                 outputKey.set(country);
                 context.write(outputKey, out);
                 validRecords++;

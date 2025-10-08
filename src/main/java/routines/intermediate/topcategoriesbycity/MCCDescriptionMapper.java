@@ -7,7 +7,7 @@ import java.util.Map;
  * Classe utilitária para mapear códigos MCC para suas descrições
  * Baseada nos códigos do dataset
  */
-public class MCCCodeMapper {
+public class MCCDescriptionMapper {
 
     // Mapa estático com códigos MCC e descrições
     private static final Map<String, String> MCC_DESCRIPTIONS = new HashMap<>();

@@ -8,11 +8,12 @@ import org.apache.hadoop.mapreduce.Reducer;
 /**
  * Reducer para identificar as top 3 categorias (MCC) por cidade
  * Demonstra agregação complexa com ranking
+ * Emite TopCategoriesResult
  */
-public class TopCategoriesByCityReducer extends Reducer<Text, MCCCountWritable, Text, Text> {
+public class TopCategoriesByCityReducer extends Reducer<Text, MCCTransactionCount, Text, TopCategoriesResult> {
 
     // Objeto reutilizável para resultado
-    private Text result = new Text();
+    private TopCategoriesResult result = new TopCategoriesResult();
 
     // Estatísticas globais
     private long totalCities = 0;
@@ -29,7 +30,7 @@ public class TopCategoriesByCityReducer extends Reducer<Text, MCCCountWritable, 
      * Método reduce - identifica top 3 categorias para cada cidade
      */
     @Override
-    protected void reduce(Text key, Iterable<MCCCountWritable> values, Context context)
+    protected void reduce(Text key, Iterable<MCCTransactionCount> values, Context context)
             throws IOException, InterruptedException {
 
         String cityName = key.toString();
@@ -38,7 +39,7 @@ public class TopCategoriesByCityReducer extends Reducer<Text, MCCCountWritable, 
         Map<String, Long> mccCounts = new HashMap<>();
 
         // Agregar todas as contagens para esta cidade
-        for (MCCCountWritable mccCount : values) {
+        for (MCCTransactionCount mccCount : values) {
             String mcc = mccCount.getMccCode();
             long count = mccCount.getCount();
 
@@ -54,28 +55,19 @@ public class TopCategoriesByCityReducer extends Reducer<Text, MCCCountWritable, 
         // Pegar top 3 (ou menos se não houver 3 categorias)
         int topN = Math.min(3, mccList.size());
 
-        // Construir resultado formatado
-        StringBuilder resultBuilder = new StringBuilder();
+        // Construir arrays para o TopCategoriesWritable
+        String[] topMCCs = new String[topN];
+        long[] topCounts = new long[topN];
 
         for (int i = 0; i < topN; i++) {
             Map.Entry<String, Long> entry = mccList.get(i);
-            String mcc = entry.getKey();
-            long count = entry.getValue();
-
-            // Buscar descrição do MCC
-            String description = MCCCodeMapper.getDescription(mcc);
-
-            // Formatar: "Top-1: 5812 (Restaurants) 3500"
-            if (i > 0) {
-                resultBuilder.append(" | ");
-            }
-            resultBuilder.append(String.format("Top-%d: %s (%s) %d",
-                    i + 1, mcc, description, count));
+            topMCCs[i] = entry.getKey();
+            topCounts[i] = entry.getValue();
         }
 
-        // Emitir resultado
-        result.set(resultBuilder.toString());
-        context.write(key, result);
+        // Criar e emitir TopCategoriesResult
+        TopCategoriesResult topCategories = new TopCategoriesResult(topMCCs, topCounts, topN);
+        context.write(key, topCategories);
 
         // Atualizar estatísticas globais
         totalCities++;

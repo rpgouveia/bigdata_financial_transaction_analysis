@@ -11,6 +11,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
 
 // Para executar configure os argumentos da seguinte forma:
 // src/main/resources/transactions_data.csv output/top_categories_by_state 1 local
@@ -74,7 +75,7 @@ public class TopCategoriesByState extends Configured implements Tool {
         // Configuração do Mapper
         job.setMapperClass(TopCategoriesByStateMapper.class);
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(routines.intermediate.topcategoriesbycity.MCCCountWritable.class);
+        job.setMapOutputValueClass(MCCTransactionCount.class);
 
         // Configuração do Reducer
         job.setReducerClass(TopCategoriesByStateReducer.class);

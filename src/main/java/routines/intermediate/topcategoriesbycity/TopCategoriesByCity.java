@@ -24,8 +24,9 @@ import org.apache.hadoop.util.ToolRunner;
  * - Contagem de transações para cada categoria
  * - Descrição legível de cada categoria
  *
- * O Custom Writable (MCCCountWritable) encapsula código MCC e contagem,
- * e o Reducer implementa lógica de agregação com HashMap e ranking.
+ * O Custom Writable (MCCTransactionCount) encapsula código MCC e contagem,
+ * e o Reducer implementa lógica de agregação com HashMap e ranking,
+ * emitindo o resultado final como TopCategoriesResult.
  */
 public class TopCategoriesByCity extends Configured implements Tool {
 
@@ -73,7 +74,7 @@ public class TopCategoriesByCity extends Configured implements Tool {
         // Configuração do Mapper
         job.setMapperClass(TopCategoriesByCityMapper.class);
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(MCCCountWritable.class);
+        job.setMapOutputValueClass(MCCTransactionCount.class);
 
         // Não vamos usar Combiner aqui porque precisamos de todos os dados no Reducer para ranking correto
         // (Um combiner poderia agregar localmente mas não conseguiria determinar o top 3 global)
@@ -81,7 +82,7 @@ public class TopCategoriesByCity extends Configured implements Tool {
         // Configuração do Reducer
         job.setReducerClass(TopCategoriesByCityReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(TopCategoriesResult.class);  // Custom Writable
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
@@ -94,7 +95,8 @@ public class TopCategoriesByCity extends Configured implements Tool {
         System.out.println("  Output: " + outputDir);
         System.out.println("  Reducers: " + numberOfReducers);
         System.out.println("  Combiner: Disabled (ranking requires all data)");
-        System.out.println("  Custom Writable: MCCCountWritable");
+        System.out.println("  Custom Writable: MCCTransactionCount (transmissão)");
+        System.out.println("  Custom Writable: TopCategoriesResult (output)");
         System.out.println("========================================");
         System.out.println();
         System.out.println("Esta rotina usa Custom Writable com agregação");

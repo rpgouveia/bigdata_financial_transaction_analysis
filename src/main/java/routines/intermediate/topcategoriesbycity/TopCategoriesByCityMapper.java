@@ -9,13 +9,13 @@ import org.apache.hadoop.mapreduce.Mapper;
 
 /**
  * Mapper para análise de categorias (MCC) por cidade
- * Emite pares (cidade, MCCCountWritable) para cada transação
+ * Emite pares (cidade, MCCTransactionCount) para cada transação
  */
-public class TopCategoriesByCityMapper extends Mapper<LongWritable, Text, Text, MCCCountWritable> {
+public class TopCategoriesByCityMapper extends Mapper<LongWritable, Text, Text, MCCTransactionCount> {
 
     // Objetos reutilizáveis
     private Text outputKey = new Text();
-    private MCCCountWritable outputValue = new MCCCountWritable();
+    private MCCTransactionCount outputValue = new MCCTransactionCount();
 
     // Contadores para estatísticas
     private long recordsProcessed = 0;
@@ -62,8 +62,8 @@ public class TopCategoriesByCityMapper extends Mapper<LongWritable, Text, Text, 
             String mcc = processMCC(mccRaw);
 
             if (!city.isEmpty() && !mcc.isEmpty() && !mcc.equals("UNKNOWN_MCC")) {
-                // Criar MCCCountWritable com count=1 para esta transação
-                MCCCountWritable mccCount = new MCCCountWritable(mcc, 1);
+                // Criar MCCTransactionCount com count=1 para esta transação
+                MCCTransactionCount mccCount = new MCCTransactionCount(mcc, 1);
 
                 // Emitir resultado
                 outputKey.set(city);

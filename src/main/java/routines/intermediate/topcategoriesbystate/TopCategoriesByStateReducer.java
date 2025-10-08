@@ -5,12 +5,13 @@ import java.util.*;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
+import routines.intermediate.topcategoriesbycity.MCCDescriptionMapper;
 
 /**
  * Reducer para identificar as top 3 categorias (MCC) por Estado
  * Demonstra agregação complexa com ranking.
  */
-public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermediate.topcategoriesbycity.MCCCountWritable, Text, Text> {
+public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermediate.topcategoriesbycity.MCCTransactionCount, Text, Text> {
 
     private Text result = new Text();
 
@@ -26,14 +27,14 @@ public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermed
     private int lowestUniqueMCCCount = Integer.MAX_VALUE;
 
     @Override
-    protected void reduce(Text key, Iterable<routines.intermediate.topcategoriesbycity.MCCCountWritable> values, Context context)
+    protected void reduce(Text key, Iterable<routines.intermediate.topcategoriesbycity.MCCTransactionCount> values, Context context)
             throws IOException, InterruptedException {
 
         String stateName = key.toString();
 
         // Agregar contagens por MCC
         Map<String, Long> mccCounts = new HashMap<>();
-        for (routines.intermediate.topcategoriesbycity.MCCCountWritable mccCount : values) {
+        for (routines.intermediate.topcategoriesbycity.MCCTransactionCount mccCount : values) {
             String mcc = mccCount.getMccCode();
             long count = mccCount.getCount();
             mccCounts.put(mcc, mccCounts.getOrDefault(mcc, 0L) + count);
@@ -53,7 +54,7 @@ public class TopCategoriesByStateReducer extends Reducer<Text, routines.intermed
             String mcc = entry.getKey();
             long count = entry.getValue();
 
-            String description = routines.intermediate.topcategoriesbycity.MCCCodeMapper.getDescription(mcc);
+            String description = MCCDescriptionMapper.getDescription(mcc);
 
             if (i > 0) sb.append(" | ");
             sb.append(String.format("Top-%d: %s (%s) %d", i + 1, mcc, description, count));

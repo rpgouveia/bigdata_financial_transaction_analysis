@@ -3,14 +3,15 @@ package routines.intermediate.topcategoriesbycity;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableUtils;
 
 /**
- * Custom Writable para armazenar um código MCC com sua contagem
+ * Custom Writable para armazenar um código MCC com sua contagem de transações
  * Usado para transmitir dados de categoria entre Mapper e Reducer
+ * Implementa WritableComparable para permitir comparação e ordenação
  */
-public class MCCCountWritable implements Writable {
+public class MCCTransactionCount implements WritableComparable<MCCTransactionCount> {
 
     private String mccCode;      // Código MCC (ex: "5812")
     private long count;          // Número de transações
@@ -18,7 +19,7 @@ public class MCCCountWritable implements Writable {
     /**
      * Construtor padrão (necessário para Hadoop)
      */
-    public MCCCountWritable() {
+    public MCCTransactionCount() {
         this.mccCode = "";
         this.count = 0;
     }
@@ -26,7 +27,7 @@ public class MCCCountWritable implements Writable {
     /**
      * Construtor com valores iniciais
      */
-    public MCCCountWritable(String mccCode, long count) {
+    public MCCTransactionCount(String mccCode, long count) {
         this.mccCode = mccCode;
         this.count = count;
     }
@@ -81,11 +82,27 @@ public class MCCCountWritable implements Writable {
     }
 
     /**
+     * Método compareTo para ordenação
+     * Compara primeiro por contagem (decrescente)
+     * Em caso de empate, compara por código MCC (alfabético)
+     */
+    @Override
+    public int compareTo(MCCTransactionCount other) {
+        // Comparar por contagem (ordem decrescente - maior primeiro)
+        if (this.count != other.count) {
+            return Long.compare(other.count, this.count);
+        }
+
+        // Se empate, comparar por código MCC (ordem alfabética)
+        return this.mccCode.compareTo(other.mccCode);
+    }
+
+    /**
      * ToString para debugging
      */
     @Override
     public String toString() {
-        return String.format("MCCCount{mcc=%s, count=%d}", mccCode, count);
+        return String.format("MCCTransactionCount{mcc=%s, count=%d}", mccCode, count);
     }
 
     /**
@@ -96,7 +113,7 @@ public class MCCCountWritable implements Writable {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
 
-        MCCCountWritable that = (MCCCountWritable) obj;
+        MCCTransactionCount that = (MCCTransactionCount) obj;
         return count == that.count && mccCode.equals(that.mccCode);
     }
 
