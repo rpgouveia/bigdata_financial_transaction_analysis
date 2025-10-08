@@ -4,15 +4,35 @@ import java.io.IOException;
 import java.util.*;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
-import routines.intermediate.topcategoriesbycity.MCCDescriptionMapper;
 import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
+import routines.intermediate.topcategoriesbycity.MCCDescriptionMapper;
+import routines.intermediate.topcategoriesbycity.TopCategoriesResult;
 
 /**
  * Reducer para identificar as top 3 categorias (MCC) por País
  * Demonstra agregação complexa com ranking
+ *
+ * Para cada país:
+ * - Agrega todas as transações por código MCC
+ * - Ordena por contagem (decrescente)
+ * - Seleciona as top 3 categorias mais frequentes
+ * - Emite resultado estruturado como TopCategoriesResult
+ *
+ * Além disso, calcula estatísticas globais sobre as transações internacionais:
+ * - Total de países processados
+ * - Total de transações internacionais
+ * - País com maior volume de transações
+ * - Diversidade comercial (países com mais/menos categorias únicas)
+ * - Média de categorias e transações por país
+ *
+ * Reutiliza classes do pacote topcategoriesbycity:
+ * - MCCTransactionCount (input)
+ * - TopCategoriesResult (output)
+ * - MCCDescriptionMapper (descrições)
  */
-public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionCount, Text, Text> {
+public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionCount, Text, TopCategoriesResult> {
 
+    // Objeto reutilizável para resultado
     private Text result = new Text();
 
     // Estatísticas globais
@@ -20,7 +40,7 @@ public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionC
     private long totalCategories = 0;
     private long totalTransactions = 0;
 
-    // Rankings globais
+    // Rankings globais de volume e diversidade
     private String countryWithMostTransactions = "";
     private long highestTransactionCount = 0;
 
@@ -30,16 +50,23 @@ public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionC
     private String countryWithLeastDiversity = "";
     private int lowestUniqueMCCCount = Integer.MAX_VALUE;
 
+    /**
+     * Método reduce - agrega e ranqueia categorias para cada país
+     * @param key Nome do país (ex: "CANADA", "MEXICO")
+     * @param values Lista de MCCTransactionCount para este país
+     * @param context Contexto para emitir resultado
+     */
     @Override
     protected void reduce(Text key, Iterable<MCCTransactionCount> values, Context context)
             throws IOException, InterruptedException {
 
         String countryName = key.toString();
 
-        // Agregar contagens por MCC
+        // HashMap para agregar contagens por MCC
         Map<String, Long> mccCounts = new HashMap<>();
         long countryTotalTransactions = 0;
 
+        // Agregar todas as contagens para este país
         for (MCCTransactionCount mccCount : values) {
             String mcc = mccCount.getMccCode();
             long count = mccCount.getCount();
@@ -47,59 +74,63 @@ public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionC
             countryTotalTransactions += count;
         }
 
-        // Ordenar por contagem (decrescente)
+        // Converter para lista para sorting
         List<Map.Entry<String, Long>> mccList = new ArrayList<>(mccCounts.entrySet());
+
+        // Ordenar por contagem (decrescente - maior primeiro)
         mccList.sort((a, b) -> b.getValue().compareTo(a.getValue()));
 
-        // Top 3
+        // Pegar top 3 (ou menos se não houver 3 categorias)
         int topN = Math.min(3, mccList.size());
 
-        // Construir linha de resultado
-        StringBuilder sb = new StringBuilder();
+        // Construr os arrays para o TopCategoriesResult
+        String[] topMCCs = new String[topN];
+        long[] topCounts = new long[topN];
+
         for (int i = 0; i < topN; i++) {
             Map.Entry<String, Long> entry = mccList.get(i);
-            String mcc = entry.getKey();
-            long count = entry.getValue();
-
-            String description = MCCDescriptionMapper.getDescription(mcc);
-
-            if (i > 0) sb.append(" | ");
-            sb.append(String.format("Top-%d: %s (%s) %d", i + 1, mcc, description, count));
+            topMCCs[i] = entry.getKey();
+            topCounts[i] = entry.getValue();
         }
 
-        result.set(sb.toString());
-        context.write(key, result);
+        // Criar e emitir o objeto TopCategoriesResult
+        TopCategoriesResult topCategories = new TopCategoriesResult(topMCCs, topCounts, topN);
+        context.write(key, topCategories);
 
-        // Estatísticas globais
+        // Atualizar estatísticas globais
         totalCountries++;
         totalCategories += mccCounts.size();
         totalTransactions += countryTotalTransactions;
 
         int uniqueMCCCount = mccCounts.size();
 
-        // País com mais transações
+        // Rastrear país com mais transações
         if (countryTotalTransactions > highestTransactionCount) {
             highestTransactionCount = countryTotalTransactions;
             countryWithMostTransactions = countryName;
         }
 
-        // País com maior diversidade
+        // Rastrear país com maior diversidade (mais categorias únicas)
         if (uniqueMCCCount > highestUniqueMCCCount && uniqueMCCCount >= 5) {
             highestUniqueMCCCount = uniqueMCCCount;
             countryWithMostDiversity = countryName;
         }
 
-        // País com menor diversidade
+        // Rastrear país com menor diversidade (menos categorias únicas)
         if (uniqueMCCCount < lowestUniqueMCCCount && uniqueMCCCount >= 1) {
             lowestUniqueMCCCount = uniqueMCCCount;
             countryWithLeastDiversity = countryName;
         }
 
+        // Log de progresso
         if (totalCountries % 20 == 0) {
             context.setStatus("Processados " + totalCountries + " países");
         }
     }
 
+    /**
+     * Cleanup - emite estatísticas finais do Reducer
+     */
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
         System.out.println("========================================");
@@ -116,7 +147,7 @@ public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionC
             System.out.println("  Média de transações por país: " + String.format("%.2f", avgTransactionsPerCountry));
             System.out.println();
 
-            System.out.println("  Rankings Globais:");
+            System.out.println("  Rankings Globais (Internacional):");
 
             if (!countryWithMostTransactions.isEmpty()) {
                 System.out.println("    País com mais transações:");
@@ -139,17 +170,17 @@ public class TopCategoriesByCountryReducer extends Reducer<Text, MCCTransactionC
             System.out.println();
             System.out.println("  Insights:");
             if (avgCategoriesPerCountry > 15) {
-                System.out.println("    Alta diversidade comercial internacional");
+                System.out.println("    Alta diversidade comercial no mercado internacional.");
             } else if (avgCategoriesPerCountry > 8) {
-                System.out.println("    Diversidade comercial moderada");
+                System.out.println("    Diversidade comercial moderada entre os países.");
             } else {
-                System.out.println("    Baixa diversidade (transações concentradas em poucas categorias)");
+                System.out.println("    Baixa diversidade (transações concentradas em poucas categorias).");
             }
 
             if (avgTransactionsPerCountry < 50) {
-                System.out.println("    Volume internacional relativamente baixo no dataset");
+                System.out.println("    Volume internacional relativamente baixo por país no dataset.");
             } else if (avgTransactionsPerCountry > 200) {
-                System.out.println("    Alto volume de transações internacionais");
+                System.out.println("    Alto volume de transações internacionais por país.");
             }
         }
 

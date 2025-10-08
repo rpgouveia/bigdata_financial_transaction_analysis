@@ -12,6 +12,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
+import routines.intermediate.topcategoriesbycity.TopCategoriesResult;
 
 // Para executar configure os argumentos da seguinte forma:
 // src/main/resources/transactions_data.csv output/top_categories_by_country 1 local
@@ -25,11 +26,21 @@ import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
  * - Contagem de transações para cada categoria
  * - Descrição legível de cada categoria
  *
- * Complementa a rotina TopCategoriesByState, processando as transações
- * internacionais (fora dos EUA) que foram filtradas na análise por estados.
+ * Filtros aplicados:
+ * - Apenas transações internacionais (fora dos EUA)
+ * - Exclui transações dos 50 estados dos EUA + DC
+ * - Ignora códigos MCC inválidos ou vazios
  *
- * O Custom Writable (MCCCountWritable) encapsula código MCC e contagem,
- * e o Reducer implementa lógica de agregação com HashMap e ranking.
+ * Complementa a rotina TopCategoriesByState, processando as transações
+ * que foram filtradas na análise por estados.
+ *
+ * Reutiliza classes do pacote topcategoriesbycity:
+ * - MCCTransactionCount: encapsula código MCC e contagem
+ * - TopCategoriesResult: armazena resultado do ranking (top 3)
+ * - MCCDescriptionMapper: mapeia códigos MCC para descrições legíveis
+ *
+ * O Reducer implementa lógica de agregação com HashMap e ranking,
+ * emitindo o resultado final como um texto formatado.
  */
 public class TopCategoriesByCountry extends Configured implements Tool {
 
@@ -77,12 +88,14 @@ public class TopCategoriesByCountry extends Configured implements Tool {
         // Configuração do Mapper
         job.setMapperClass(TopCategoriesByCountryMapper.class);
         job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(MCCTransactionCount.class);
+        job.setMapOutputValueClass(MCCTransactionCount.class); // Custom Writable
+
+        // Não usamos Combiner pois o Reducer precisa de todos os dados para o ranking
 
         // Configuração do Reducer
         job.setReducerClass(TopCategoriesByCountryReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(TopCategoriesResult.class); // Custom Writable
 
         // Número de reducers
         job.setNumReduceTasks(numberOfReducers);
@@ -95,7 +108,9 @@ public class TopCategoriesByCountry extends Configured implements Tool {
         System.out.println("  Output: " + outputDir);
         System.out.println("  Reducers: " + numberOfReducers);
         System.out.println("  Combiner: Disabled (ranking requires all data)");
-        System.out.println("  Custom Writable: MCCCountWritable (reutilizado)");
+        System.out.println("  Custom Writable (Map Output): MCCTransactionCount (reutilizado)");
+        System.out.println("  Custom Writable (Reduce Output): TopCategoriesResult (reutilizado)");
+        System.out.println("  Utilitário: MCCDescriptionMapper (reutilizado)");
         System.out.println("========================================");
         System.out.println();
         System.out.println("Esta rotina usa Custom Writable com agregação");
@@ -145,6 +160,9 @@ public class TopCategoriesByCountry extends Configured implements Tool {
         }
     }
 
+    /**
+     * Método main - ponto de entrada da aplicação
+     */
     public static void main(String[] args) throws Exception {
         System.out.println("========================================");
         System.out.println("Iniciando TopCategoriesByCountry...");
@@ -154,8 +172,8 @@ public class TopCategoriesByCountry extends Configured implements Tool {
         System.out.println("Objetivo: Identificar as top 3 categorias por país");
         System.out.println("  - Baseado em códigos MCC (Merchant Category Code)");
         System.out.println("  - Apenas transações internacionais (fora dos EUA)");
-        System.out.println("  - Demonstra agregação com HashMap");
-        System.out.println("  - Demonstra sorting e ranking");
+        System.out.println("  - Demonstra agregação com HashMap e ranking");
+        System.out.println("  - Reutiliza classes do pacote topcategoriesbycity");
         System.out.println();
 
         int exitCode = ToolRunner.run(new Configuration(), new TopCategoriesByCountry(), args);
