@@ -11,6 +11,9 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+// Para executar configure os argumentos da seguinte forma:
+// src/main/resources/transactions_data.csv output/risk_pipeline local
+
 /**
  * Driver para pipeline de análise de risco com múltiplos steps.
  *
@@ -38,18 +41,29 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
     @Override
     public int run(String[] args) throws Exception {
 
-        if (args.length != 2) {
-            System.err.println("Uso: RiskAnalysisPipeline <input_path> <output_path>");
+        if (args.length < 2) {
+            System.err.println("Uso: RiskAnalysisPipeline <input_path> <output_path> [local]");
+            System.err.println();
+            System.err.println("  input_path: caminho do arquivo CSV de transações");
+            System.err.println("  output_path: caminho base do diretório de saída");
+            System.err.println("  local: para execução local no IntelliJ (opcional)");
             System.err.println();
             System.err.println("Este pipeline executa 3 jobs encadeados:");
             System.err.println("  1. Client Profile Builder");
             System.err.println("  2. Risk Category Classifier");
             System.err.println("  3. Final Risk Report Generator");
+            System.err.println();
+            System.err.println("Exemplo (IntelliJ):");
+            System.err.println("  src/main/resources/transactions_data.csv output/risk_pipeline local");
+            System.err.println();
+            System.err.println("Exemplo (Hadoop):");
+            System.err.println("  hadoop jar risk-pipeline.jar RiskAnalysisPipeline /input/data.csv /output/risk");
             return -1;
         }
 
         String inputPath = args[0];
         String outputPath = args[1];
+        boolean localMode = (args.length > 2 && "local".equals(args[2]));
 
         // Paths intermediários para os steps
         String step1Output = outputPath + "_step1_profiles";
@@ -58,9 +72,18 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
 
         Configuration conf = getConf();
 
+        // Configuração para modo local (IntelliJ)
+        if (localMode) {
+            System.out.println("Configurando para execução local (standalone)...");
+            conf.set("fs.defaultFS", "file:///");
+            conf.set("mapreduce.framework.name", "local");
+            conf.set("mapreduce.jobtracker.address", "local");
+        }
+
         System.out.println("\n============================================================");
         System.out.println("    RISK ANALYSIS PIPELINE - MULTI-STEP MAPREDUCE");
         System.out.println("============================================================");
+        System.out.println("Mode: " + (localMode ? "Local (Standalone)" : "Cluster"));
         System.out.println("Input: " + inputPath);
         System.out.println("Final Output: " + step3Output);
         System.out.println("============================================================\n");
@@ -125,6 +148,20 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
         System.out.println("Intermediate Outputs:");
         System.out.println("  - Step 1: " + step1Output);
         System.out.println("  - Step 2: " + step2Output);
+
+        if (localMode) {
+            System.out.println("\n============================================================");
+            System.out.println("Para ver os resultados (modo local):");
+            System.out.println("  Step 1 (Perfis): cat " + step1Output + "/part-r-00000");
+            System.out.println("  Step 2 (Classificações): cat " + step2Output + "/part-r-00000");
+            System.out.println("  Step 3 (Relatório): cat " + step3Output + "/part-r-00000");
+            System.out.println();
+            System.out.println("Formato dos outputs:");
+            System.out.println("  Step 1: clientId → perfil comportamental");
+            System.out.println("  Step 2: categoria → classificação de risco");
+            System.out.println("  Step 3: categoria → relatório consolidado");
+        }
+
         System.out.println("============================================================\n");
 
         return 0;

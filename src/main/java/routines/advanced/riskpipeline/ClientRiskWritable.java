@@ -1,15 +1,16 @@
 package routines.advanced.riskpipeline;
 
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
 /**
- * Writable que representa a classificação de risco de um cliente.
+ * WritableComparable que representa a classificação de risco de um cliente.
  * Usado no Step 2 para armazenar score e categoria de risco.
+ * Implementa comparação por risk score para permitir rankings.
  */
-public class ClientRiskWritable implements Writable {
+public class ClientRiskWritable implements WritableComparable<ClientRiskWritable> {
 
     private String clientId;
     private String riskCategory; // LOW, MEDIUM, HIGH, CRITICAL
@@ -64,6 +65,75 @@ public class ClientRiskWritable implements Writable {
         return String.format("%s\t%s\t%.2f\t%s\t%d\t%.2f",
                 clientId, riskCategory, riskScore, riskFactors,
                 transactionCount, totalAmount);
+    }
+
+    /**
+     * Método compareTo para ordenação.
+     * Compara por riskScore (decrescente - maior risco primeiro).
+     */
+    @Override
+    public int compareTo(ClientRiskWritable other) {
+        // Comparar por riskScore (decrescente - maior risco primeiro)
+        int scoreComparison = Double.compare(other.riskScore, this.riskScore);
+        if (scoreComparison != 0) {
+            return scoreComparison;
+        }
+
+        // Se empate, comparar por categoria (ordem: CRITICAL > HIGH > MEDIUM > LOW)
+        int categoryComparison = compareCategories(other.riskCategory, this.riskCategory);
+        if (categoryComparison != 0) {
+            return categoryComparison;
+        }
+
+        // Se ainda empate, comparar por clientId (alfabético)
+        return this.clientId.compareTo(other.clientId);
+    }
+
+    /**
+     * Compara categorias de risco (CRITICAL > HIGH > MEDIUM > LOW).
+     */
+    private int compareCategories(String cat1, String cat2) {
+        int rank1 = getCategoryRank(cat1);
+        int rank2 = getCategoryRank(cat2);
+        return Integer.compare(rank1, rank2);
+    }
+
+    /**
+     * Retorna ranking numérico da categoria (maior = mais crítico).
+     */
+    private int getCategoryRank(String category) {
+        switch (category) {
+            case "CRITICAL": return 4;
+            case "HIGH": return 3;
+            case "MEDIUM": return 2;
+            case "LOW": return 1;
+            default: return 0;
+        }
+    }
+
+    /**
+     * Equals para comparação.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        ClientRiskWritable that = (ClientRiskWritable) obj;
+        return Double.compare(that.riskScore, riskScore) == 0 &&
+                clientId.equals(that.clientId) &&
+                riskCategory.equals(that.riskCategory);
+    }
+
+    /**
+     * HashCode para uso em coleções.
+     */
+    @Override
+    public int hashCode() {
+        int result = clientId.hashCode();
+        result = 31 * result + riskCategory.hashCode();
+        result = 31 * result + Double.hashCode(riskScore);
+        return result;
     }
 
     // Getters e Setters

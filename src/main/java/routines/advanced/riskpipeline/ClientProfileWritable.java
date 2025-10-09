@@ -1,15 +1,16 @@
 package routines.advanced.riskpipeline;
 
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
 /**
- * Writable que representa o perfil agregado de um cliente.
+ * WritableComparable que representa o perfil agregado de um cliente.
  * Usado no Step 1 para armazenar estatísticas comportamentais.
+ * Implementa comparação por valor total de transações.
  */
-public class ClientProfileWritable implements Writable {
+public class ClientProfileWritable implements WritableComparable<ClientProfileWritable> {
 
     private String clientId;
     private int transactionCount;
@@ -103,6 +104,53 @@ public class ClientProfileWritable implements Writable {
                 clientId, transactionCount, totalAmount, avgAmount, uniqueCities,
                 uniqueMccs, uniqueCards, firstTransaction, lastTransaction,
                 onlineCount, swipeCount, errorCount, chargebackCount);
+    }
+
+    /**
+     * Método compareTo para ordenação.
+     * Compara primeiro por valor total (decrescente), depois por quantidade de transações.
+     */
+    @Override
+    public int compareTo(ClientProfileWritable other) {
+        // Comparar por totalAmount (decrescente - maior primeiro)
+        int amountComparison = Double.compare(other.totalAmount, this.totalAmount);
+        if (amountComparison != 0) {
+            return amountComparison;
+        }
+
+        // Se empate, comparar por transactionCount (decrescente)
+        int countComparison = Integer.compare(other.transactionCount, this.transactionCount);
+        if (countComparison != 0) {
+            return countComparison;
+        }
+
+        // Se ainda empate, comparar por clientId (alfabético)
+        return this.clientId.compareTo(other.clientId);
+    }
+
+    /**
+     * Equals para comparação.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        ClientProfileWritable that = (ClientProfileWritable) obj;
+        return transactionCount == that.transactionCount &&
+                Double.compare(that.totalAmount, totalAmount) == 0 &&
+                clientId.equals(that.clientId);
+    }
+
+    /**
+     * HashCode para uso em coleções.
+     */
+    @Override
+    public int hashCode() {
+        int result = clientId.hashCode();
+        result = 31 * result + transactionCount;
+        result = 31 * result + Double.hashCode(totalAmount);
+        return result;
     }
 
     // Getters e Setters
