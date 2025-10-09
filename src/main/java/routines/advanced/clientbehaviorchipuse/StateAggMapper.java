@@ -6,24 +6,9 @@ import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Mapper;
 
 /**
- * Lê a saída textual do Job 1 (state \t StateClientAggWritable serializado via toString? Não!)
- * OBS: Estamos usando TextOutputFormat padrão, que escreve o Writable em binário se usado SequenceFile.
- * Para manter compatibilidade com TextOutputFormat (linha de texto),
- * vamos re-emergir o StateClientAggWritable através de parsing simples:
- *
- * Formato da linha do Job1 (TextOutputFormat):
- *   <state>\t<binary? NO> -> Precisamos emitir no Job1 um formato textual.
- *
- * Para simplificar, o Job1 está usando TextOutputFormat, que chamará toString() de StateClientAggWritable? NÃO: TextOutputFormat escreve o value.toString().
- * Nosso StateClientAggWritable não sobrescreveu toString(); poderíamos:
- *   (a) Sobrescrever toString()/fromString
- *   (b) Usar SequenceFileOutputFormat nos dois jobs
- *
- * Para ficar self-contained e textual, implementaremos um formato compacto:
+ * Lê a saída textual do Job 1
  *   No Job1, StateClientAggWritable será materializado via toText() no reducer (ctx.write(Text, Text)).
  *   -> Para isso, ajustamos o Job1: outputValueClass=Text e escreveremos "total:low:med:high|cityA=3,cityB=1"
- *
- * Para evitar refatorar tudo, faremos a leitura aqui assumindo que o Reducer1 já escreveu no formato textual.
  */
 public class StateAggMapper extends Mapper<LongWritable, Text, Text, StateClientAggWritable> {
 
