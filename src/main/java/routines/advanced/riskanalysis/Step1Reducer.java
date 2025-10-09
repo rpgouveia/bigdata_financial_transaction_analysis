@@ -1,4 +1,4 @@
-package routines.advanced.riskpipeline;
+package routines.advanced.riskanalysis;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;

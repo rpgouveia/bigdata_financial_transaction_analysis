@@ -1,11 +1,9 @@
-package routines.advanced.riskpipeline;
+package routines.advanced.riskanalysis;
 
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * Step 1 Mapper - Client Profile Builder
