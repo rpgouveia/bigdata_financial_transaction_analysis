@@ -30,22 +30,25 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
             try {
                 String[] fields = value.toString().split("\t");
 
-                if (fields.length < 13) continue;
+                // Esperamos 14 campos (key + 13 campos do profile, sendo clientId duplicado)
+                if (fields.length < 14) continue;
 
                 // Parse do perfil
+                // Nota: fields[0] é a key (clientId), fields[1] é clientId duplicado do profile
+                // Índices ajustados para pular a duplicação
                 String clientId = fields[0].trim();
-                int transactionCount = Integer.parseInt(fields[1].trim());
-                double totalAmount = Double.parseDouble(fields[2].trim());
-                double avgAmount = Double.parseDouble(fields[3].trim());
-                int uniqueCities = Integer.parseInt(fields[4].trim());
-                int uniqueMccs = Integer.parseInt(fields[5].trim());
-                int uniqueCards = Integer.parseInt(fields[6].trim());
-                long firstTransaction = Long.parseLong(fields[7].trim());
-                long lastTransaction = Long.parseLong(fields[8].trim());
-                int onlineCount = Integer.parseInt(fields[9].trim());
-                int swipeCount = Integer.parseInt(fields[10].trim());
-                int errorCount = Integer.parseInt(fields[11].trim());
-                int chargebackCount = Integer.parseInt(fields[12].trim());
+                int transactionCount = Integer.parseInt(fields[2].trim());  // Era fields[1]
+                double totalAmount = Double.parseDouble(fields[3].trim());   // Era fields[2]
+                double avgAmount = Double.parseDouble(fields[4].trim());     // Era fields[3]
+                int uniqueCities = Integer.parseInt(fields[5].trim());       // Era fields[4]
+                int uniqueMccs = Integer.parseInt(fields[6].trim());         // Era fields[5]
+                int uniqueCards = Integer.parseInt(fields[7].trim());        // Era fields[6]
+                long firstTransaction = Long.parseLong(fields[8].trim());    // Era fields[7]
+                long lastTransaction = Long.parseLong(fields[9].trim());     // Era fields[8]
+                int onlineCount = Integer.parseInt(fields[10].trim());       // Era fields[9]
+                int swipeCount = Integer.parseInt(fields[11].trim());        // Era fields[10]
+                int errorCount = Integer.parseInt(fields[12].trim());        // Era fields[11]
+                int chargebackCount = Integer.parseInt(fields[13].trim());   // Era fields[12]
 
                 // Calcula risk score
                 double riskScore = 0.0;

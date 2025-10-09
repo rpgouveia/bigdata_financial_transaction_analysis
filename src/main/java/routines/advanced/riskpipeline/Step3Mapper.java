@@ -29,10 +29,11 @@ public class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
         try {
             // Parse do output do Step 2
-            // Formato: riskCategory \t clientId \t riskScore \t riskFactors \t ...
+            // Formato: riskCategory \t clientId \t riskCategory \t riskScore \t riskFactors \t ...
             String[] fields = line.split("\t");
 
-            if (fields.length < 6) {
+            // Esperamos 7 campos (key + 6 campos do risk)
+            if (fields.length < 7) {
                 context.getCounter("Step3", "INVALID_RECORDS").increment(1);
                 return;
             }

@@ -52,14 +52,22 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
             try {
                 String[] fields = value.toString().split("\t");
 
-                if (fields.length < 6) continue;
+                // Esperamos 7 campos (key + 6 campos do risk, com duplicações)
+                if (fields.length < 7) continue;
 
                 // Parse dos dados do cliente
+                // fields[0] = riskCategory (key)
+                // fields[1] = clientId
+                // fields[2] = riskCategory (duplicado do toString())
+                // fields[3] = riskScore
+                // fields[4] = riskFactors
+                // fields[5] = transactionCount
+                // fields[6] = totalAmount
                 String clientId = fields[1].trim();
-                double riskScore = Double.parseDouble(fields[2].trim());
-                String riskFactors = fields[3].trim();
-                int transactionCount = Integer.parseInt(fields[4].trim());
-                double amount = Double.parseDouble(fields[5].trim());
+                double riskScore = Double.parseDouble(fields[3].trim());    // Era fields[2]
+                String riskFactors = fields[4].trim();                      // Era fields[3]
+                int transactionCount = Integer.parseInt(fields[5].trim());  // Era fields[4]
+                double amount = Double.parseDouble(fields[6].trim());       // Era fields[5]
 
                 clients.add(new ClientRisk(clientId, riskScore, riskFactors,
                         transactionCount, amount));
