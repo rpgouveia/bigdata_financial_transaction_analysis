@@ -84,8 +84,10 @@ public class Step1Reducer extends Reducer<Text, Text, Text, ClientProfileWritabl
                     swipeCount++;
                 }
 
-                // Erros
-                if (!errors.isEmpty()) {
+                // Erros - só conta se tiver conteúdo real
+                // Campo vazio = sem erro, Campo com texto = erro
+                if (errors != null && !errors.trim().isEmpty() &&
+                        !errors.equalsIgnoreCase("null") && !errors.equals("N/A")) {
                     errorCount++;
                 }
 
