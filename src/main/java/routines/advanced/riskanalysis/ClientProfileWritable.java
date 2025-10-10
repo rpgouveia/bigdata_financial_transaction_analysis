@@ -4,6 +4,7 @@ import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Locale;
 
 /**
  * WritableComparable que representa o perfil agregado de um cliente.
@@ -100,7 +101,9 @@ public class ClientProfileWritable implements WritableComparable<ClientProfileWr
 
     @Override
     public String toString() {
-        return String.format("%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
+        // CRÍTICO: Usar Locale.US para garantir formato consistente com ponto decimal
+        // independente da configuração regional do Windows/Linux
+        return String.format(Locale.US, "%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
                 clientId, transactionCount, totalAmount, avgAmount, uniqueCities,
                 uniqueMccs, uniqueCards, firstTransaction, lastTransaction,
                 onlineCount, swipeCount, errorCount, chargebackCount);

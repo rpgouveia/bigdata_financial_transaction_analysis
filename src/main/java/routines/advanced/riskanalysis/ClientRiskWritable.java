@@ -4,6 +4,7 @@ import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Locale;
 
 /**
  * WritableComparable que representa a classificação de risco de um cliente.
@@ -62,7 +63,9 @@ public class ClientRiskWritable implements WritableComparable<ClientRiskWritable
 
     @Override
     public String toString() {
-        return String.format("%s\t%s\t%.2f\t%s\t%d\t%.2f",
+        // CRÍTICO: Usar Locale.US para garantir formato consistente com ponto decimal
+        // independente da configuração regional do Windows/Linux
+        return String.format(Locale.US, "%s\t%s\t%.2f\t%s\t%d\t%.2f",
                 clientId, riskCategory, riskScore, riskFactors,
                 transactionCount, totalAmount);
     }
