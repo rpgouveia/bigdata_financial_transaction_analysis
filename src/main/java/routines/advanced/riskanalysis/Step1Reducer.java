@@ -39,7 +39,7 @@ public class Step1Reducer extends Reducer<Text, Text, Text, ClientProfileWritabl
         // Processa todas as transações do cliente
         for (Text value : values) {
             try {
-                String[] fields = value.toString().split(",");
+                String[] fields = value.toString().split(",", -1);
 
                 if (fields.length < 12) continue;
 

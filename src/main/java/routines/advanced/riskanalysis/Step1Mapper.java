@@ -30,7 +30,7 @@ public class Step1Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
         try {
             // Parse da linha CSV
-            String[] fields = line.split(",");
+            String[] fields = line.split(",", -1);
 
             if (fields.length < 12) {
                 context.getCounter("Step1", "INVALID_RECORDS").increment(1);
