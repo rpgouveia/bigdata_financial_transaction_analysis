@@ -28,27 +28,36 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
         // Processa o perfil do cliente (deve haver apenas 1)
         for (Text value : values) {
             try {
-                String[] fields = value.toString().split("\t");
+                // Remove caracteres de controle e faz split
+                String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
+                String[] fields = line.split("\t");
+
+                // Limpa cada campo individualmente
+                for (int i = 0; i < fields.length; i++) {
+                    fields[i] = fields[i].trim();
+                }
 
                 // Esperamos 14 campos (key + 13 campos do profile, sendo clientId duplicado)
-                if (fields.length < 14) continue;
+                if (fields.length < 14) {
+                    context.getCounter("Step2", "INVALID_FIELD_COUNT_" + fields.length).increment(1);
+                    continue;
+                }
 
                 // Parse do perfil
                 // Nota: fields[0] é a key (clientId), fields[1] é clientId duplicado do profile
-                // Índices ajustados para pular a duplicação
-                String clientId = fields[0].trim();
-                int transactionCount = Integer.parseInt(fields[2].trim());  // Era fields[1]
-                double totalAmount = Double.parseDouble(fields[3].trim());   // Era fields[2]
-                double avgAmount = Double.parseDouble(fields[4].trim());     // Era fields[3]
-                int uniqueCities = Integer.parseInt(fields[5].trim());       // Era fields[4]
-                int uniqueMccs = Integer.parseInt(fields[6].trim());         // Era fields[5]
-                int uniqueCards = Integer.parseInt(fields[7].trim());        // Era fields[6]
-                long firstTransaction = Long.parseLong(fields[8].trim());    // Era fields[7]
-                long lastTransaction = Long.parseLong(fields[9].trim());     // Era fields[8]
-                int onlineCount = Integer.parseInt(fields[10].trim());       // Era fields[9]
-                int swipeCount = Integer.parseInt(fields[11].trim());        // Era fields[10]
-                int errorCount = Integer.parseInt(fields[12].trim());        // Era fields[11]
-                int chargebackCount = Integer.parseInt(fields[13].trim());   // Era fields[12]
+                String clientId = fields[0];
+                int transactionCount = Integer.parseInt(fields[2]);
+                double totalAmount = Double.parseDouble(fields[3]);
+                double avgAmount = Double.parseDouble(fields[4]);
+                int uniqueCities = Integer.parseInt(fields[5]);
+                int uniqueMccs = Integer.parseInt(fields[6]);
+                int uniqueCards = Integer.parseInt(fields[7]);
+                long firstTransaction = Long.parseLong(fields[8]);
+                long lastTransaction = Long.parseLong(fields[9]);
+                int onlineCount = Integer.parseInt(fields[10]);
+                int swipeCount = Integer.parseInt(fields[11]);
+                int errorCount = Integer.parseInt(fields[12]);
+                int chargebackCount = Integer.parseInt(fields[13]);
 
                 // Calcula risk score
                 double riskScore = 0.0;
@@ -152,8 +161,12 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
                 context.getCounter("Step2", "CLASSIFIED_CLIENTS").increment(1);
                 context.getCounter("Step2", "CATEGORY_" + riskCategory).increment(1);
 
+            } catch (NumberFormatException e) {
+                context.getCounter("Step2", "NUMBER_FORMAT_ERRORS").increment(1);
+                System.err.println("Step2Reducer NumberFormat Error: " + e.getMessage());
             } catch (Exception e) {
                 context.getCounter("Step2", "REDUCER_ERRORS").increment(1);
+                System.err.println("Step2Reducer Error: " + e.getMessage());
             }
         }
     }

@@ -50,10 +50,20 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
         // Coleta todos os clientes desta categoria
         for (Text value : values) {
             try {
-                String[] fields = value.toString().split("\t");
+                // Remove caracteres de controle e faz split
+                String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
+                String[] fields = line.split("\t");
+
+                // Limpa cada campo individualmente
+                for (int i = 0; i < fields.length; i++) {
+                    fields[i] = fields[i].trim();
+                }
 
                 // Esperamos 7 campos (key + 6 campos do risk, com duplicações)
-                if (fields.length < 7) continue;
+                if (fields.length < 7) {
+                    context.getCounter("Step3", "INVALID_FIELD_COUNT_" + fields.length).increment(1);
+                    continue;
+                }
 
                 // Parse dos dados do cliente
                 // fields[0] = riskCategory (key)
@@ -63,11 +73,11 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
                 // fields[4] = riskFactors
                 // fields[5] = transactionCount
                 // fields[6] = totalAmount
-                String clientId = fields[1].trim();
-                double riskScore = Double.parseDouble(fields[3].trim());    // Era fields[2]
-                String riskFactors = fields[4].trim();                      // Era fields[3]
-                int transactionCount = Integer.parseInt(fields[5].trim());  // Era fields[4]
-                double amount = Double.parseDouble(fields[6].trim());       // Era fields[5]
+                String clientId = fields[1];
+                double riskScore = Double.parseDouble(fields[3]);
+                String riskFactors = fields[4];
+                int transactionCount = Integer.parseInt(fields[5]);
+                double amount = Double.parseDouble(fields[6]);
 
                 clients.add(new ClientRisk(clientId, riskScore, riskFactors,
                         transactionCount, amount));
@@ -77,8 +87,12 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
                 totalTransactions += transactionCount;
                 sumRiskScore += riskScore;
 
+            } catch (NumberFormatException e) {
+                context.getCounter("Step3", "NUMBER_FORMAT_ERRORS").increment(1);
+                System.err.println("Step3Reducer NumberFormat Error: " + e.getMessage());
             } catch (Exception e) {
                 context.getCounter("Step3", "REDUCER_ERRORS").increment(1);
+                System.err.println("Step3Reducer Error: " + e.getMessage());
             }
         }
 

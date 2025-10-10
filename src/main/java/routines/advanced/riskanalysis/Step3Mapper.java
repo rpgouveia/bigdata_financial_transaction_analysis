@@ -21,7 +21,8 @@ public class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
     protected void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
 
-        String line = value.toString().trim();
+        // Remove TODOS os caracteres de controle (incluindo \r do Windows)
+        String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
 
         if (line.isEmpty()) {
             return;
@@ -35,10 +36,11 @@ public class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
             // Esperamos 7 campos (key + 6 campos do risk)
             if (fields.length < 7) {
                 context.getCounter("Step3", "INVALID_RECORDS").increment(1);
+                context.getCounter("Step3", "INVALID_LENGTH_" + fields.length).increment(1);
                 return;
             }
 
-            // Extrai categoria de risco (primeiro campo)
+            // Extrai categoria de risco (primeiro campo) e remove espaços
             String category = fields[0].trim();
 
             // Emite: risk_category -> linha completa
@@ -50,6 +52,7 @@ public class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
         } catch (Exception e) {
             context.getCounter("Step3", "PARSE_ERRORS").increment(1);
+            System.err.println("Step3Mapper Error: " + e.getMessage() + " - Line: " + line);
         }
     }
 }

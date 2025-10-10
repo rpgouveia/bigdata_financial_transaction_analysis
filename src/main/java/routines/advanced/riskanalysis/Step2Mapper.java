@@ -21,7 +21,8 @@ public class Step2Mapper extends Mapper<LongWritable, Text, Text, Text> {
     protected void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
 
-        String line = value.toString().trim();
+        // Remove TODOS os caracteres de controle (incluindo \r do Windows)
+        String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
 
         if (line.isEmpty()) {
             return;
@@ -34,10 +35,11 @@ public class Step2Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
             if (fields.length < 13) {
                 context.getCounter("Step2", "INVALID_RECORDS").increment(1);
+                context.getCounter("Step2", "INVALID_LENGTH_" + fields.length).increment(1);
                 return;
             }
 
-            // Extrai client_id (primeiro campo)
+            // Extrai client_id (primeiro campo) e remove espaços
             String client = fields[0].trim();
 
             // Emite: client_id -> linha completa do perfil
@@ -49,6 +51,7 @@ public class Step2Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
         } catch (Exception e) {
             context.getCounter("Step2", "PARSE_ERRORS").increment(1);
+            System.err.println("Step2Mapper Error: " + e.getMessage() + " - Line: " + line);
         }
     }
 }
