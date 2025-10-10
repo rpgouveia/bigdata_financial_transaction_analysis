@@ -15,7 +15,7 @@ import org.apache.hadoop.util.ToolRunner;
 // src/main/resources/transactions_data.csv output/risk_pipeline local
 
 /**
- * Driver para pipeline de análise de risco com múltiplos steps.
+ * Driver para pipeline de análise de risco de fraudes com múltiplos steps.
  *
  * MULTI-STEP MAPREDUCE PIPELINE (3 Jobs Encadeados):
  *
