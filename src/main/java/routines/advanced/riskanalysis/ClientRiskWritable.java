@@ -63,47 +63,41 @@ public class ClientRiskWritable implements WritableComparable<ClientRiskWritable
 
     @Override
     public String toString() {
-        // CRÍTICO: Usar Locale.US para garantir formato consistente com ponto decimal
-        // independente da configuração regional do Windows/Linux
+        return String.format(Locale.US, "%s\t%.2f\t%s\t%d\t%.2f",
+                clientId, riskScore, riskFactors, transactionCount, totalAmount);
+    }
+
+    /**
+     * Método alternativo para obter representação completa (com riskCategory)
+     * útil para debug e logging.
+     */
+    public String toFullString() {
         return String.format(Locale.US, "%s\t%s\t%.2f\t%s\t%d\t%.2f",
                 clientId, riskCategory, riskScore, riskFactors,
                 transactionCount, totalAmount);
     }
 
-    /**
-     * Método compareTo para ordenação.
-     * Compara por riskScore (decrescente - maior risco primeiro).
-     */
     @Override
     public int compareTo(ClientRiskWritable other) {
-        // Comparar por riskScore (decrescente - maior risco primeiro)
         int scoreComparison = Double.compare(other.riskScore, this.riskScore);
         if (scoreComparison != 0) {
             return scoreComparison;
         }
 
-        // Se empate, comparar por categoria (ordem: CRITICAL > HIGH > MEDIUM > LOW)
         int categoryComparison = compareCategories(other.riskCategory, this.riskCategory);
         if (categoryComparison != 0) {
             return categoryComparison;
         }
 
-        // Se ainda empate, comparar por clientId (alfabético)
         return this.clientId.compareTo(other.clientId);
     }
 
-    /**
-     * Compara categorias de risco (CRITICAL > HIGH > MEDIUM > LOW).
-     */
     private int compareCategories(String cat1, String cat2) {
         int rank1 = getCategoryRank(cat1);
         int rank2 = getCategoryRank(cat2);
         return Integer.compare(rank1, rank2);
     }
 
-    /**
-     * Retorna ranking numérico da categoria (maior = mais crítico).
-     */
     private int getCategoryRank(String category) {
         switch (category) {
             case "CRITICAL": return 4;
@@ -114,9 +108,6 @@ public class ClientRiskWritable implements WritableComparable<ClientRiskWritable
         }
     }
 
-    /**
-     * Equals para comparação.
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -128,9 +119,6 @@ public class ClientRiskWritable implements WritableComparable<ClientRiskWritable
                 riskCategory.equals(that.riskCategory);
     }
 
-    /**
-     * HashCode para uso em coleções.
-     */
     @Override
     public int hashCode() {
         int result = clientId.hashCode();

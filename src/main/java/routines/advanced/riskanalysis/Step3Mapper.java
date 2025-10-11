@@ -21,7 +21,6 @@ public class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
     protected void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
 
-        // Remove TODOS os caracteres de controle (incluindo \r do Windows)
         String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
 
         if (line.isEmpty()) {
@@ -30,17 +29,18 @@ public class Step3Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
         try {
             // Parse do output do Step 2
-            // Formato: riskCategory \t clientId \t riskCategory \t riskScore \t riskFactors \t ...
+            // Formato:
+            // riskCategory \t clientId \t riskScore \t riskFactors \t transactionCount \t totalAmount
             String[] fields = line.split("\t");
 
-            // Esperamos 7 campos (key + 6 campos do risk)
-            if (fields.length < 7) {
+            // Esperamos 6 campos (key + 5 campos do risk)
+            if (fields.length < 6) {
                 context.getCounter("Step3", "INVALID_RECORDS").increment(1);
                 context.getCounter("Step3", "INVALID_LENGTH_" + fields.length).increment(1);
                 return;
             }
 
-            // Extrai categoria de risco (primeiro campo) e remove espaços
+            // Extrai categoria de risco (primeiro campo - a chave)
             String category = fields[0].trim();
 
             // Emite: risk_category -> linha completa

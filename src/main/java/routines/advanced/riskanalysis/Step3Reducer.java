@@ -51,7 +51,6 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
         // Coleta todos os clientes desta categoria
         for (Text value : values) {
             try {
-                // Remove caracteres de controle e faz split
                 String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
                 String[] fields = line.split("\t");
 
@@ -60,25 +59,25 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
                     fields[i] = fields[i].trim();
                 }
 
-                // Esperamos 7 campos (key + 6 campos do risk, com duplicações)
-                if (fields.length < 7) {
+                // Formato:
+                // fields[0] = riskCategory (key)
+                // fields[1] = clientId
+                // fields[2] = riskScore
+                // fields[3] = riskFactors
+                // fields[4] = transactionCount
+                // fields[5] = totalAmount
+
+                if (fields.length < 6) {
                     context.getCounter("Step3", "INVALID_FIELD_COUNT_" + fields.length).increment(1);
                     continue;
                 }
 
                 // Parse dos dados do cliente
-                // fields[0] = riskCategory (key)
-                // fields[1] = clientId
-                // fields[2] = riskCategory (duplicado do toString())
-                // fields[3] = riskScore
-                // fields[4] = riskFactors
-                // fields[5] = transactionCount
-                // fields[6] = totalAmount
                 String clientId = fields[1];
-                double riskScore = Double.parseDouble(fields[3]);
-                String riskFactors = fields[4];
-                int transactionCount = Integer.parseInt(fields[5]);
-                double amount = Double.parseDouble(fields[6]);
+                double riskScore = Double.parseDouble(fields[2]);
+                String riskFactors = fields[3];
+                int transactionCount = Integer.parseInt(fields[4]);
+                double amount = Double.parseDouble(fields[5]);
 
                 clients.add(new ClientRisk(clientId, riskScore, riskFactors,
                         transactionCount, amount));
@@ -116,13 +115,13 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
         StringBuilder report = new StringBuilder();
 
         // Cabeçalho da categoria
-        report.append(String.format("\n========== RISK CATEGORY: %s ==========\n",
+        report.append(String.format(Locale.US, "\n========== RISK CATEGORY: %s ==========\n",
                 riskCategory));
-        report.append(String.format("Total Clients: %d\n", totalClients));
-        report.append(String.format("Average Risk Score: %.2f\n", avgRiskScore));
-        report.append(String.format("Total Amount: $%.2f\n", totalAmount));
-        report.append(String.format("Average Amount per Client: $%.2f\n", avgAmount));
-        report.append(String.format("Average Transactions per Client: %.1f\n",
+        report.append(String.format(Locale.US, "Total Clients: %d\n", totalClients));
+        report.append(String.format(Locale.US, "Average Risk Score: %.2f\n", avgRiskScore));
+        report.append(String.format(Locale.US, "Total Amount: $%.2f\n", totalAmount));
+        report.append(String.format(Locale.US, "Average Amount per Client: $%.2f\n", avgAmount));
+        report.append(String.format(Locale.US, "Average Transactions per Client: %.1f\n",
                 avgTransactions));
         report.append("\n");
 
@@ -131,7 +130,7 @@ public class Step3Reducer extends Reducer<Text, Text, Text, Text> {
         int limit = Math.min(10, clients.size());
         for (int i = 0; i < limit; i++) {
             ClientRisk c = clients.get(i);
-            report.append(String.format("%d. Client %s (Score: %.2f, Transactions: %d, " +
+            report.append(String.format(Locale.US, "%d. Client %s (Score: %.2f, Transactions: %d, " +
                             "Amount: $%.2f)\n   Factors: %s\n",
                     i + 1, c.clientId, c.riskScore, c.transactionCount,
                     c.totalAmount, c.riskFactors));

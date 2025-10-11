@@ -26,10 +26,8 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
     protected void reduce(Text key, Iterable<Text> values, Context context)
             throws IOException, InterruptedException {
 
-        // Processa o perfil do cliente (deve haver apenas 1)
         for (Text value : values) {
             try {
-                // Remove caracteres de controle e faz split
                 String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
                 String[] fields = line.split("\t");
 
@@ -38,27 +36,32 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
                     fields[i] = fields[i].trim();
                 }
 
-                // Esperamos 14 campos (key + 13 campos do profile, sendo clientId duplicado)
-                if (fields.length < 14) {
+                // Formato:
+                // fields[0] = clientId (da key)
+                // fields[1] = transactionCount
+                // fields[2] = totalAmount
+                // fields[3] = avgAmount
+                // ... etc (total 13 campos)
+
+                if (fields.length < 13) {
                     context.getCounter("Step2", "INVALID_FIELD_COUNT_" + fields.length).increment(1);
                     continue;
                 }
 
                 // Parse do perfil
-                // Nota: fields[0] é a key (clientId), fields[1] é clientId duplicado do profile
                 String clientId = fields[0];
-                int transactionCount = Integer.parseInt(fields[2]);
-                double totalAmount = Double.parseDouble(fields[3]);
-                double avgAmount = Double.parseDouble(fields[4]);
-                int uniqueCities = Integer.parseInt(fields[5]);
-                int uniqueMccs = Integer.parseInt(fields[6]);
-                int uniqueCards = Integer.parseInt(fields[7]);
-                long firstTransaction = Long.parseLong(fields[8]);
-                long lastTransaction = Long.parseLong(fields[9]);
-                int onlineCount = Integer.parseInt(fields[10]);
-                int swipeCount = Integer.parseInt(fields[11]);
-                int errorCount = Integer.parseInt(fields[12]);
-                int chargebackCount = Integer.parseInt(fields[13]);
+                int transactionCount = Integer.parseInt(fields[1]);
+                double totalAmount = Double.parseDouble(fields[2]);
+                double avgAmount = Double.parseDouble(fields[3]);
+                int uniqueCities = Integer.parseInt(fields[4]);
+                int uniqueMccs = Integer.parseInt(fields[5]);
+                int uniqueCards = Integer.parseInt(fields[6]);
+                long firstTransaction = Long.parseLong(fields[7]);
+                long lastTransaction = Long.parseLong(fields[8]);
+                int onlineCount = Integer.parseInt(fields[9]);
+                int swipeCount = Integer.parseInt(fields[10]);
+                int errorCount = Integer.parseInt(fields[11]);
+                int chargebackCount = Integer.parseInt(fields[12]);
 
                 // Calcula risk score
                 double riskScore = 0.0;
@@ -96,10 +99,10 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
                     double errorRate = (errorCount * 100.0) / transactionCount;
                     if (errorRate > 20) {
                         riskScore += 25;
-                        riskFactors.add(String.format("HIGH_ERROR_RATE[%.1f%%]", errorRate));
+                        riskFactors.add(String.format(Locale.US, "HIGH_ERROR_RATE[%.1f%%]", errorRate));
                     } else if (errorRate > 10) {
                         riskScore += 12;
-                        riskFactors.add(String.format("MEDIUM_ERROR_RATE[%.1f%%]", errorRate));
+                        riskFactors.add(String.format(Locale.US, "MEDIUM_ERROR_RATE[%.1f%%]", errorRate));
                     }
                 }
 
@@ -115,10 +118,10 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
                 // Fator 6: Valor médio alto
                 if (avgAmount > 500) {
                     riskScore += 15;
-                    riskFactors.add(String.format("HIGH_AVG_AMOUNT[%.2f]", avgAmount));
+                    riskFactors.add(String.format(Locale.US, "HIGH_AVG_AMOUNT[%.2f]", avgAmount));
                 } else if (avgAmount > 200) {
                     riskScore += 7;
-                    riskFactors.add(String.format("MEDIUM_AVG_AMOUNT[%.2f]", avgAmount));
+                    riskFactors.add(String.format(Locale.US, "MEDIUM_AVG_AMOUNT[%.2f]", avgAmount));
                 }
 
                 // Fator 7: Proporção online vs presencial
@@ -126,7 +129,7 @@ public class Step2Reducer extends Reducer<Text, Text, Text, ClientRiskWritable> 
                     double onlineRate = (onlineCount * 100.0) / transactionCount;
                     if (onlineRate > 80 || onlineRate < 20) {
                         riskScore += 10;
-                        riskFactors.add(String.format("UNBALANCED_CHANNELS[%.0f%%_online]", onlineRate));
+                        riskFactors.add(String.format(Locale.US, "UNBALANCED_CHANNELS[%.0f%%_online]", onlineRate));
                     }
                 }
 

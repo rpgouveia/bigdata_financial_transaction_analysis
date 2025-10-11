@@ -101,39 +101,38 @@ public class ClientProfileWritable implements WritableComparable<ClientProfileWr
 
     @Override
     public String toString() {
-        // CRÍTICO: Usar Locale.US para garantir formato consistente com ponto decimal
-        // independente da configuração regional do Windows/Linux
+        return String.format(Locale.US, "%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
+                transactionCount, totalAmount, avgAmount, uniqueCities,
+                uniqueMccs, uniqueCards, firstTransaction, lastTransaction,
+                onlineCount, swipeCount, errorCount, chargebackCount);
+    }
+
+    /**
+     * Método alternativo para obter representação completa (com clientId)
+     * útil para debug e logging.
+     */
+    public String toFullString() {
         return String.format(Locale.US, "%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
                 clientId, transactionCount, totalAmount, avgAmount, uniqueCities,
                 uniqueMccs, uniqueCards, firstTransaction, lastTransaction,
                 onlineCount, swipeCount, errorCount, chargebackCount);
     }
 
-    /**
-     * Método compareTo para ordenação.
-     * Compara primeiro por valor total (decrescente), depois por quantidade de transações.
-     */
     @Override
     public int compareTo(ClientProfileWritable other) {
-        // Comparar por totalAmount (decrescente - maior primeiro)
         int amountComparison = Double.compare(other.totalAmount, this.totalAmount);
         if (amountComparison != 0) {
             return amountComparison;
         }
 
-        // Se empate, comparar por transactionCount (decrescente)
         int countComparison = Integer.compare(other.transactionCount, this.transactionCount);
         if (countComparison != 0) {
             return countComparison;
         }
 
-        // Se ainda empate, comparar por clientId (alfabético)
         return this.clientId.compareTo(other.clientId);
     }
 
-    /**
-     * Equals para comparação.
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -145,9 +144,6 @@ public class ClientProfileWritable implements WritableComparable<ClientProfileWr
                 clientId.equals(that.clientId);
     }
 
-    /**
-     * HashCode para uso em coleções.
-     */
     @Override
     public int hashCode() {
         int result = clientId.hashCode();

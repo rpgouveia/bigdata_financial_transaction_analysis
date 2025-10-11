@@ -21,7 +21,6 @@ public class Step2Mapper extends Mapper<LongWritable, Text, Text, Text> {
     protected void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
 
-        // Remove TODOS os caracteres de controle (incluindo \r do Windows)
         String line = value.toString().replaceAll("\\r\\n|\\r|\\n", "").trim();
 
         if (line.isEmpty()) {
@@ -30,16 +29,18 @@ public class Step2Mapper extends Mapper<LongWritable, Text, Text, Text> {
 
         try {
             // Parse do output do Step 1
-            // Formato: clientId \t transactionCount \t totalAmount \t ...
+            // Formato:
+            // clientId \t transactionCount \t totalAmount \t avgAmount \t ...
             String[] fields = line.split("\t");
 
+            // Agora esperamos 13 campos (key + 12 campos do perfil)
             if (fields.length < 13) {
                 context.getCounter("Step2", "INVALID_RECORDS").increment(1);
                 context.getCounter("Step2", "INVALID_LENGTH_" + fields.length).increment(1);
                 return;
             }
 
-            // Extrai client_id (primeiro campo) e remove espaços
+            // Extrai client_id (primeiro campo - a chave)
             String client = fields[0].trim();
 
             // Emite: client_id -> linha completa do perfil

@@ -90,7 +90,7 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
 
         long totalStartTime = System.currentTimeMillis();
 
-        // ===== STEP 1: CLIENT PROFILE BUILDER =====
+        // STEP 1: CLIENT PROFILE BUILDER
         System.out.println("\n>>> STEP 1: Building Client Profiles...");
         long step1Start = System.currentTimeMillis();
 
@@ -104,7 +104,7 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
         long step1Duration = System.currentTimeMillis() - step1Start;
         System.out.println(">>> STEP 1 COMPLETED in " + (step1Duration / 1000) + " seconds");
 
-        // ===== STEP 2: RISK CATEGORY CLASSIFIER =====
+        // STEP 2: RISK CATEGORY CLASSIFIER
         System.out.println("\n>>> STEP 2: Classifying Risk Categories...");
         long step2Start = System.currentTimeMillis();
 
@@ -118,7 +118,7 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
         long step2Duration = System.currentTimeMillis() - step2Start;
         System.out.println(">>> STEP 2 COMPLETED in " + (step2Duration / 1000) + " seconds");
 
-        // ===== STEP 3: FINAL RISK REPORT GENERATOR =====
+        // STEP 3: FINAL RISK REPORT GENERATOR
         System.out.println("\n>>> STEP 3: Generating Final Risk Reports...");
         long step3Start = System.currentTimeMillis();
 
