@@ -74,9 +74,7 @@ public class CategoryByTimePeriod extends Configured implements Tool {
             conf.set("mapreduce.jobtracker.address", "local");
         }
 
-        // ================================================================
         // JOB 1: AGREGAÇÃO
-        // ================================================================
         System.out.println();
         System.out.println("========================================");
         System.out.println("JOB 1: AGREGAÇÃO");
@@ -132,9 +130,7 @@ public class CategoryByTimePeriod extends Configured implements Tool {
                 job1.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter",
                         "MAP_INPUT_RECORDS").getValue());
 
-        // ================================================================
         // JOB 2: RANKING
-        // ================================================================
         System.out.println();
         System.out.println("========================================");
         System.out.println("JOB 2: RANKING");
@@ -186,9 +182,7 @@ public class CategoryByTimePeriod extends Configured implements Tool {
                 job2.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter",
                         "MAP_INPUT_RECORDS").getValue());
 
-        // ================================================================
         // FINALIZAÇÃO
-        // ================================================================
         long totalTime = (endTime2 - startTime1);
 
         System.out.println();
