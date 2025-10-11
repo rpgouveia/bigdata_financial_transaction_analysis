@@ -7,8 +7,10 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
@@ -25,17 +27,17 @@ import routines.intermediate.topcategoriesbycity.TopCategoriesResult;
  *
  * JOB 1 - AGREGAÇÃO:
  *   Input:  CSV de transações
- *   Output: Contagens agregadas por cidade-período-MCC
+ *   Output: Contagens agregadas por cidade-período-MCC (SequenceFile)
  *
  * JOB 2 - RANKING:
- *   Input:  Output do Job 1
+ *   Input:  Output do Job 1 (SequenceFile)
  *   Output: Top 3 categorias por cidade-período
  *
  * Demonstra:
  *   ✓ Chave composta (Cidade + Período)
  *   ✓ Análise multidimensional
  *   ✓ Pipeline multi-step
- *   ✓ Reutilização de componentes
+ *   ✓ Otimização com SequenceFile e Custom Writables
  */
 public class CategoryByTimePeriod extends Configured implements Tool {
 
@@ -76,10 +78,10 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         // JOB 1: AGREGAÇÃO
         // ================================================================
         System.out.println();
-        System.out.println("╔════════════════════════════════════════════════╗");
-        System.out.println("║          JOB 1: AGREGAÇÃO                      ║");
-        System.out.println("║  Somando transações por cidade-período-MCC     ║");
-        System.out.println("╚════════════════════════════════════════════════╝");
+        System.out.println("========================================");
+        System.out.println("JOB 1: AGREGAÇÃO");
+        System.out.println("Somando transações por cidade-período-MCC");
+        System.out.println("========================================");
         System.out.println();
 
         Job job1 = Job.getInstance(conf, "step1_aggregation");
@@ -90,26 +92,27 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         FileOutputFormat.setOutputPath(job1, intermediateOutputDir);
 
         job1.setInputFormatClass(TextInputFormat.class);
-        job1.setOutputFormatClass(TextOutputFormat.class);
+        job1.setOutputFormatClass(SequenceFileOutputFormat.class);
 
         // Mapper
         job1.setMapperClass(Step1AggregationMapper.class);
         job1.setMapOutputKeyClass(CityPeriodKey.class);
         job1.setMapOutputValueClass(MCCTransactionCount.class);
 
-        // Combiner (otimização)
+        // Combiner
         job1.setCombinerClass(Step1AggregationCombiner.class);
 
-        // Reducer (agregação)
+        // Reducer
         job1.setReducerClass(Step1AggregationReducer.class);
-        job1.setOutputKeyClass(Text.class);
-        job1.setOutputValueClass(Text.class);
+        job1.setOutputKeyClass(CityPeriodKey.class);
+        job1.setOutputValueClass(MCCTransactionCount.class);
 
         job1.setNumReduceTasks(numberOfReducers);
 
         System.out.println("Job 1 - Configuração:");
         System.out.println("  Input: " + inputPath);
         System.out.println("  Output: " + intermediateOutputDir);
+        System.out.println("  Output Format: SequenceFile");
         System.out.println("  Reducers: " + numberOfReducers);
         System.out.println();
 
@@ -119,12 +122,12 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         long endTime1 = System.currentTimeMillis();
 
         if (!success1) {
-            System.err.println("✗ Job 1 falhou!");
+            System.err.println("Job 1 falhou!");
             return 1;
         }
 
         System.out.println();
-        System.out.println("✓ Job 1 completo em " + (endTime1 - startTime1) + "ms");
+        System.out.println("Job 1 completo em " + (endTime1 - startTime1) + "ms");
         System.out.println("  Registros processados: " +
                 job1.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter",
                         "MAP_INPUT_RECORDS").getValue());
@@ -133,10 +136,10 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         // JOB 2: RANKING
         // ================================================================
         System.out.println();
-        System.out.println("╔════════════════════════════════════════════════╗");
-        System.out.println("║          JOB 2: RANKING                        ║");
-        System.out.println("║  Identificando Top 3 por cidade-período        ║");
-        System.out.println("╚════════════════════════════════════════════════╝");
+        System.out.println("========================================");
+        System.out.println("JOB 2: RANKING");
+        System.out.println("Identificando Top 3 por cidade-período");
+        System.out.println("========================================");
         System.out.println();
 
         Job job2 = Job.getInstance(conf, "step2_ranking");
@@ -146,11 +149,10 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         FileInputFormat.addInputPath(job2, intermediateOutputDir);
         FileOutputFormat.setOutputPath(job2, finalOutputDir);
 
-        job2.setInputFormatClass(TextInputFormat.class);
+        job2.setInputFormatClass(SequenceFileInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class);
 
-        // Mapper
-        job2.setMapperClass(Step2RankingMapper.class);
+        // Map Output (Identity Mapper automático lê do SequenceFile)
         job2.setMapOutputKeyClass(CityPeriodKey.class);
         job2.setMapOutputValueClass(MCCTransactionCount.class);
 
@@ -163,6 +165,7 @@ public class CategoryByTimePeriod extends Configured implements Tool {
 
         System.out.println("Job 2 - Configuração:");
         System.out.println("  Input: " + intermediateOutputDir);
+        System.out.println("  Input Format: SequenceFile");
         System.out.println("  Output: " + finalOutputDir);
         System.out.println("  Reducers: " + numberOfReducers);
         System.out.println();
@@ -173,12 +176,12 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         long endTime2 = System.currentTimeMillis();
 
         if (!success2) {
-            System.err.println("✗ Job 2 falhou!");
+            System.err.println("Job 2 falhou!");
             return 1;
         }
 
         System.out.println();
-        System.out.println("✓ Job 2 completo em " + (endTime2 - startTime2) + "ms");
+        System.out.println("Job 2 completo em " + (endTime2 - startTime2) + "ms");
         System.out.println("  Registros processados: " +
                 job2.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter",
                         "MAP_INPUT_RECORDS").getValue());
@@ -189,16 +192,15 @@ public class CategoryByTimePeriod extends Configured implements Tool {
         long totalTime = (endTime2 - startTime1);
 
         System.out.println();
-        System.out.println("╔════════════════════════════════════════════════╗");
-        System.out.println("║      MULTI-STEP PROCESSING COMPLETO            ║");
-        System.out.println("╚════════════════════════════════════════════════╝");
+        System.out.println("========================================");
+        System.out.println("MULTI-STEP PROCESSING COMPLETO");
+        System.out.println("========================================");
         System.out.println();
         System.out.println("Tempo total: " + totalTime + "ms");
         System.out.println("  Job 1 (Agregação): " + (endTime1 - startTime1) + "ms");
         System.out.println("  Job 2 (Ranking): " + (endTime2 - startTime2) + "ms");
         System.out.println();
 
-        // Informações úteis
         if (localMode) {
             System.out.println("Arquivos gerados:");
             System.out.println("  Intermediário: " + intermediateOutputDir);
@@ -219,26 +221,25 @@ public class CategoryByTimePeriod extends Configured implements Tool {
      * Método main - ponto de entrada da aplicação
      */
     public static void main(String[] args) throws Exception {
-        System.out.println("╔════════════════════════════════════════════════╗");
-        System.out.println("║   CategoryByTimePeriod - MULTI-STEP            ║");
-        System.out.println("║   Rotina Avançada com Processamento em Etapas ║");
-        System.out.println("╚════════════════════════════════════════════════╝");
+        System.out.println("========================================");
+        System.out.println("CategoryByTimePeriod - MULTI-STEP");
+        System.out.println("Rotina Avançada - Análise Multi-dimensional");
+        System.out.println("========================================");
         System.out.println();
         System.out.println("Objetivo: Identificar padrões de consumo por horário");
-        System.out.println("  → Top 3 categorias por período e cidade");
+        System.out.println("  - Top 3 categorias por período e cidade");
         System.out.println();
         System.out.println("Arquitetura Multi-Step:");
-        System.out.println("  1️⃣  Job 1 → Agregação de contagens");
-        System.out.println("  2️⃣  Job 2 → Ranking top 3 categorias");
+        System.out.println("  1. Job 1 → Agregação de contagens");
+        System.out.println("  2. Job 2 → Ranking top 3 categorias");
         System.out.println();
         System.out.println("Conceitos demonstrados:");
-        System.out.println("  ✓ Chave composta (Cidade + Período)");
-        System.out.println("  ✓ Análise multidimensional");
-        System.out.println("  ✓ Pipeline multi-step encadeado");
-        System.out.println("  ✓ Combiner para otimização");
+        System.out.println("  - Chave composta (Cidade + Período)");
+        System.out.println("  - Análise multidimensional");
+        System.out.println("  - Pipeline multi-step encadeado");
+        System.out.println("  - Otimização com SequenceFile");
         System.out.println();
 
-        // Executar com ToolRunner
         int exitCode = ToolRunner.run(new Configuration(),
                 new CategoryByTimePeriod(), args);
 

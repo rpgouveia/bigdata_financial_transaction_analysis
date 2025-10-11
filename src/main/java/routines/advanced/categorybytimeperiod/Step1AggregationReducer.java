@@ -3,7 +3,6 @@ package routines.advanced.categorybytimeperiod;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
 
@@ -14,13 +13,12 @@ import routines.intermediate.topcategoriesbycity.MCCTransactionCount;
  * Sua responsabilidade é APENAS agregar (somar) as contagens,
  * sem fazer nenhum ranking ou ordenação.
  *
+ * OTIMIZAÇÃO: Usa Custom Writables no output para evitar parsing no Job 2
+ *
  * Input:  (CityPeriodKey, MCCTransactionCount)
- * Output: (Text, Text) formato: "CITY\tPERIOD\tMCC\tCOUNT"
+ * Output: (CityPeriodKey, MCCTransactionCount) - agregado
  */
-public class Step1AggregationReducer extends Reducer<CityPeriodKey, MCCTransactionCount, Text, Text> {
-
-    private Text outputKey = new Text();
-    private Text outputValue = new Text();
+public class Step1AggregationReducer extends Reducer<CityPeriodKey, MCCTransactionCount, CityPeriodKey, MCCTransactionCount> {
 
     // Estatísticas
     private long totalRecords = 0;
@@ -34,9 +32,6 @@ public class Step1AggregationReducer extends Reducer<CityPeriodKey, MCCTransacti
                           Iterable<MCCTransactionCount> values,
                           Context context) throws IOException, InterruptedException {
 
-        String cityName = key.getCityName();
-        String timePeriod = key.getTimePeriod();
-
         // Agregar contagens por MCC
         Map<String, Long> mccCounts = new HashMap<>();
 
@@ -47,12 +42,10 @@ public class Step1AggregationReducer extends Reducer<CityPeriodKey, MCCTransacti
         }
 
         // Emitir cada MCC com sua contagem agregada
-        // Formato: Key="CITY\tPERIOD" Value="MCC\tCOUNT"
-        outputKey.set(cityName + "\t" + timePeriod);
-
         for (Map.Entry<String, Long> entry : mccCounts.entrySet()) {
-            outputValue.set(entry.getKey() + "\t" + entry.getValue());
-            context.write(outputKey, outputValue);
+            MCCTransactionCount aggregated = new MCCTransactionCount(
+                    entry.getKey(), entry.getValue());
+            context.write(key, aggregated);
             totalRecords++;
         }
 
@@ -82,8 +75,9 @@ public class Step1AggregationReducer extends Reducer<CityPeriodKey, MCCTransacti
         }
 
         System.out.println();
-        System.out.println("  Formato de saída: CITY\\tPERIOD\\tMCC\\tCOUNT");
-        System.out.println("  Arquivo intermediário pronto para Job 2");
+        System.out.println("  Formato de saída: Custom Writables (binário)");
+        System.out.println("  Output: (CityPeriodKey, MCCTransactionCount)");
+        System.out.println("  Arquivo intermediário otimizado para Job 2");
         System.out.println("========================================");
         super.cleanup(context);
     }
