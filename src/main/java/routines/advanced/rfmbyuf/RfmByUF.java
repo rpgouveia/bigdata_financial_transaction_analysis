@@ -13,7 +13,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 // Para executar configure os argumentos da seguinte forma:
-// src/main/resources/transactions_data.csv output/client_behavior/client_behavior_stage1 output/client_behavior/client_behavior_final 1 local
+// src/main/resources/transactions_data.csv output/rfmbyufr/rfmbyufr_stage1 output/rfmbyufr/rfmbyufr_final 1 local
 
 /*
 * RFM-lite do Cliente (Recência-Frequência-Monetário) por UF:
