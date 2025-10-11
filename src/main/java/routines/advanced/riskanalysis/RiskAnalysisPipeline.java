@@ -33,8 +33,6 @@ import org.apache.hadoop.util.ToolRunner;
  *   - Input: Output do Step 2
  *   - Output: Relatórios consolidados por categoria
  *   - Função: Gerar rankings e estatísticas finais
- *
- * Uso: hadoop jar risk-pipeline.jar RiskAnalysisPipeline <input> <output>
  */
 public class RiskAnalysisPipeline extends Configured implements Tool {
 
@@ -261,6 +259,9 @@ public class RiskAnalysisPipeline extends Configured implements Tool {
         job.setMapOutputValueClass(Text.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
+
+        // Aplicar comparador de categorias
+        job.setSortComparatorClass(RiskCategoryComparator.class);
 
         // Paths
         FileInputFormat.addInputPath(job, new Path(input + "/part-r-*"));
