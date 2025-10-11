@@ -9,11 +9,11 @@ Este projeto implementa diversas rotinas MapReduce para processar e analisar um 
 
 🎯 Objetivos
 
-Processar grandes volumes de dados de transações financeiras
-Demonstrar padrões de MapReduce (agregação, contagem, ranking)
-Implementar Custom Writables para estruturas de dados complexas
-Otimizar desempenho com Combiners
-Realizar análises multidimensionais (geográfica, temporal, categórica)
+- Processar grandes volumes de dados de transações financeiras
+- Demonstrar padrões de MapReduce (agregação, contagem, ranking)
+- Implementar Custom Writables para estruturas de dados complexas
+- Otimizar desempenho com Combiners
+- Realizar pipelines multi-step encadeados
 
 📁 Estrutura do Projeto
 ```
@@ -25,16 +25,23 @@ src/main/java/routines/
 │   ├── errorcountbymcc/           # Contagem de erros por categoria
 │   └── transactioncountbystate/   # Contagem por estado
 │
-└── intermediate/                  # Rotinas intermediárias (Custom Writables)
-    ├── citystatistics/            # Estatísticas completas por cidade
-    ├── citytimeperiod/            # Análise temporal por cidade
-    ├── topcategoriesbycity/       # Top 3 categorias por cidade
-    ├── topcategoriesbycountry/    # Top 3 categorias por país
-    └── topcategoriesbystate/      # Top 3 categorias por estado
+├── intermediate/                  # Rotinas intermediárias (Custom Writables)
+│   ├── citystatistics/            # Estatísticas completas por cidade
+│   ├── citytimeperiod/            # Análise temporal por cidade
+│   ├── topcategoriesbycity/       # Top 3 categorias por cidade
+│   ├── topcategoriesbycountry/    # Top 3 categorias por país
+│   └── topcategoriesbystate/      # Top 3 categorias por estado
+│
+└── advanced/                      # Rotinas avançadas (Multi-step pipelines)
+    ├── categorybytimeperiod/      # Top 3 categorias por período e cidade (2 jobs)
+    ├── clientbehaviorchipuse/     # Perfil de risco por cliente e UF (2 jobs)
+    ├── merchanthrisk/             # Radar de saúde e risco por UF (2 jobs)
+    ├── rfmbyuf/                   # Análise RFM por UF (2 jobs)
+    └── riskanalysis/              # Pipeline de análise de risco (3 jobs)
 ```
-🚀 Rotinas Implementadas
+### 🚀 Rotinas Implementadas
 
-📌 Rotinas Básicas
+### 📌 Rotinas Básicas
 ```
 1. AmountByCity
    Calcula o valor total transacionado em cada cidade.
@@ -67,7 +74,7 @@ Output: ESTADO    CONTAGEM
 Conceitos: Validação de dados, análise geográfica por região
 ```
 
-⭐ Rotinas Intermediárias
+### ⭐ Rotinas Intermediárias
 ```
 1. CityStatistics (Custom Writable)
    Calcula estatísticas completas por cidade: contagem, total e ticket médio.
@@ -100,7 +107,36 @@ Output: PAÍS    Top-1: MCC (Descrição) N | Top-2: ... | Top-3: ...
 Conceitos: Filtragem por país, análise de transações internacionais
 ```
 
-📊 Dataset
+### 🔥 Rotinas Avançadas (Multi-step)
+```
+**1. CategoryByTimePeriod** (2 Jobs)
+- Job 1: Agrega transações por cidade-período-MCC
+- Job 2: Identifica top 3 categorias por cidade e período
+- Demonstra: Chave composta, SequenceFile, Pipeline encadeado
+
+**2. ClientBehaviorChipUse** (2 Jobs)
+- Job 1: Calcula perfil do cliente (taxa online, erros, ticket médio)
+- Job 2: Agrega por UF com classificação LOW/MED/HIGH e hotspots
+- Demonstra: Métricas comportamentais, classificação de risco
+
+**3. MerchantHealthRisk** (2 Jobs)
+- Job 1: Classifica comerciantes por saúde (A/B/C) e risco (LOW/MED/HIGH)
+- Job 2: Consolida por UF com top-K merchants e hotspots
+- Demonstra: Dupla classificação, top-K dinâmico
+
+**4. RfmByUF** (2 Jobs)
+- Job 1: Análise RFM (Recency, Frequency, Monetary) por cliente
+- Job 2: Agrega por UF com classificação de valor
+- Demonstra: Análise temporal, segmentação de clientes
+
+**5. RiskAnalysisPipeline** (3 Jobs)
+- Job 1: Constrói perfis comportamentais dos clientes
+- Job 2: Classifica em categorias de risco (LOW/MED/HIGH/CRITICAL)
+- Job 3: Gera relatórios consolidados com rankings
+- Demonstra: Pipeline complexo de 3 etapas, análise de fraude
+```
+
+### 📊 Dataset
 
 O projeto utiliza um dataset de transações financeiras em formato CSV com a seguinte estrutura:
 ```
@@ -121,9 +157,11 @@ zip: CEP
 mcc: Merchant Category Code (código da categoria)
 errors: Campo de erros/validações
 ```
-Coloque o arquivo CSV em: src/main/resources/transactions_data.csv
-
-🛠️ Tecnologias Utilizadas
+### 📍 Localização
+```
+src/main/resources/transactions_data.csv
+```
+### 🛠️ Tecnologias Utilizadas
 
 Java 8+
 
@@ -133,9 +171,8 @@ MapReduce Framework
 
 Maven (gerenciamento de dependências)
 
-⚙️ Como Executar
+### ⚙️ Como Executar
 Pré-requisitos
-
 ```
 # Hadoop instalado e configurado
 # Java 8 ou superior
@@ -158,6 +195,12 @@ src/main/resources/transactions_data.csv \
 output/city_statistics \
 1 \
 local
+
+# Rotina Avançada (Multi-step) - Exemplo: RiskAnalysis
+java -cp target/classes routines.advanced.riskanalysis.RiskAnalysisPipeline \
+  src/main/resources/transactions_data.csv \
+  output/risk_pipeline \
+  local
 ```
 Parâmetros de Execução
 ```
@@ -168,9 +211,9 @@ Parâmetros de Execução
 ```
 Ver Resultados
 ```
-# Ver output de qualquer rotina
+# Rotinas básicas e intermediárias
 cat output/[nome_rotina]/part-r-00000
 
-# Exemplo
-cat output/city_statistics/part-r-00000
+# Rotinas avançadas (multi-step)
+cat output/[nome_rotina]_step3_final/part-r-00000
 ```
